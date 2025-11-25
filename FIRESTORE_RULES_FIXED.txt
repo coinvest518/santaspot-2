@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can read/write their own data
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // Clicks collection - authenticated users can read and create
+    match /clicks/{document=**} {
+      allow read, create: if request.auth != null;
+    }
+    
+    // Referrals collection - authenticated users can read and create
+    match /referrals/{document=**} {
+      allow read, create: if request.auth != null;
+    }
+    
+    // Donations collection - authenticated users can read and create
+    match /donations/{document=**} {
+      allow read, create: if request.auth != null;
+    }
+    
+    // Offer completions collection - authenticated users can read and create
+    match /offer_completions/{document=**} {
+      allow read, create: if request.auth != null;
+    }
+    
+    // Withdrawal requests collection - authenticated users can read and create
+    match /withdrawal_requests/{document=**} {
+      allow read, create: if request.auth != null;
+    }
+    
+    // Daily logins collection - authenticated users can read and create
+    match /daily_logins/{document=**} {
+      allow read, create: if request.auth != null;
+    }
+    
+    // Global data (pot totals, etc.) - authenticated users can read
+    match /globals/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null; // Allow writes for pot updates
+    }
+  }
+}

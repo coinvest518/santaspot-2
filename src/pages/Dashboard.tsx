@@ -12,6 +12,8 @@ import {
   subscribeToReferrals,
   subscribeToUserProfile,
   subscribeToGlobalPot,
+  trackSocialShare,
+  syncUserStats,
   DonationRecord,
   ReferralRecord,
   GlobalPot,
@@ -69,39 +71,53 @@ const Dashboard = () => {
       referral_code,
     }));
     
+    // Sync user stats first to ensure data is current
+    syncUserStats(uuid).then(() => {
+      console.log('Dashboard: User stats synced');
+    }).catch(error => {
+      console.error('Dashboard: Failed to sync user stats:', error);
+    });
+    
     // --- Set up real-time listeners ---
 
     const unsubProfile = subscribeToUserProfile(uid, (profile) => {
       if (profile) {
+        console.log('Dashboard: Profile updated', profile);
         setDashboardData(prev => ({
           ...prev,
-          earnings: profile.earnings,
-          completed_offers: profile.completed_offers,
+          earnings: profile.earnings || 0,
+          completed_offers: profile.completed_offers || 0,
           username: profile.username || 'User',
           influence_score: profile.influence_score || 0,
           total_donated: profile.total_donated || 0,
+          referral_clicks: profile.total_clicks || 0,
+          referrals: profile.total_referrals || 0,
         }));
       }
       setLoading(false);
     });
 
     const unsubClicks = subscribeToClicks(uuid, (count) => {
+      console.log('Dashboard: Clicks updated', count);
       setDashboardData(prev => ({ ...prev, referral_clicks: count }));
     });
 
     const unsubReferrals = subscribeToReferrals(uuid, (referralsList) => {
+      console.log('Dashboard: Referrals updated', referralsList.length);
       setDashboardData(prev => ({ ...prev, referrals: referralsList.length }));
     });
     
     // Subscribe to global pot for real-time updates
     const unsubGlobalPot = subscribeToGlobalPot((pot) => {
       if (pot) {
+        console.log('Dashboard: Pot updated', pot.total_amount);
         setPotTotal(pot.total_amount);
       }
     });
     
-    // Fetch user donations once
+    // Fetch user donations and subscribe to updates
     getUserDonations(uuid).then(donationsList => {
+      console.log('Dashboard: Donations loaded', donationsList.length);
       setDonations(donationsList);
     });
 
@@ -137,30 +153,42 @@ const Dashboard = () => {
     return `🎅 Join Santa's Pot and earn money! Get $200 signup bonus + $2 per click + $50 per referral! Use my code: ${dashboardData.referral_code}`;
   };
 
-  const shareOnFacebook = () => {
+  const shareOnFacebook = async () => {
     const url = encodeURIComponent(dashboardData.referralLink);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
-    toast.success('Opening Facebook share dialog...');
+    if (initialUserProfile) {
+      await trackSocialShare(initialUserProfile.uuid, 'facebook');
+      toast.success('Opening Facebook share dialog... +2 points!');
+    }
   };
 
-  const shareOnTwitter = () => {
+  const shareOnTwitter = async () => {
     const text = encodeURIComponent(getShareMessage());
     const url = encodeURIComponent(dashboardData.referralLink);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'width=600,height=400');
-    toast.success('Opening Twitter share dialog...');
+    if (initialUserProfile) {
+      await trackSocialShare(initialUserProfile.uuid, 'twitter');
+      toast.success('Opening Twitter share dialog... +2 points!');
+    }
   };
 
-  const shareOnWhatsApp = () => {
+  const shareOnWhatsApp = async () => {
     const text = encodeURIComponent(`${getShareMessage()} ${dashboardData.referralLink}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
-    toast.success('Opening WhatsApp...');
+    if (initialUserProfile) {
+      await trackSocialShare(initialUserProfile.uuid, 'whatsapp');
+      toast.success('Opening WhatsApp... +2 points!');
+    }
   };
 
-  const shareOnTelegram = () => {
+  const shareOnTelegram = async () => {
     const text = encodeURIComponent(getShareMessage());
     const url = encodeURIComponent(dashboardData.referralLink);
     window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
-    toast.success('Opening Telegram...');
+    if (initialUserProfile) {
+      await trackSocialShare(initialUserProfile.uuid, 'telegram');
+      toast.success('Opening Telegram... +2 points!');
+    }
   };
 
   const copyShareMessage = async () => {
@@ -193,9 +221,26 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        <Button>
-          {dashboardData.username ? `Welcome, ${dashboardData.username}!` : 'Welcome!'}
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Button
+            onClick={() => {
+              if (initialUserProfile?.uuid) {
+                syncUserStats(initialUserProfile.uuid).then(() => {
+                  toast.success('Stats refreshed!');
+                }).catch(() => {
+                  toast.error('Failed to refresh stats');
+                });
+              }
+            }}
+            variant="outline"
+            size="sm"
+          >
+            🔄 Refresh
+          </Button>
+          <Button>
+            {dashboardData.username ? `Welcome, ${dashboardData.username}!` : 'Welcome!'}
+          </Button>
+        </div>
       </header>
 
       <main className="p-6">

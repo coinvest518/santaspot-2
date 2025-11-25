@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db, subscribeToAuthChanges, fetchUserProfile, signUp, signIn, logOut, signInWithGoogle, UserProfile } from '@/lib/firebase';
+import { auth, db, subscribeToAuthChanges, fetchUserProfile, signUp, signIn, logOut, signInWithGoogle, migrateUserProfile, trackDailyLogin, UserProfile } from '@/lib/firebase';
 import { User as FirebaseUser } from 'firebase/auth';
 import { FirebaseUserContext } from './FirebaseUserContext';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
@@ -16,8 +16,15 @@ export const FirebaseUserProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       if (user) {
         try {
+          // Migrate user first to ensure all fields exist
+          await migrateUserProfile(user.uid);
           const profile = await fetchUserProfile(user.uid);
           setUserProfile(profile);
+          
+          // Track daily login if profile exists
+          if (profile?.uuid) {
+            await trackDailyLogin(profile.uuid);
+          }
         } catch (err) {
           console.error('Error fetching profile:', err);
           setError('Failed to load user profile');

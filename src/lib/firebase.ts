@@ -30,6 +30,12 @@ export interface UserProfile {
   completed_offers: number;
   total_donated: number;
   influence_score: number;
+  total_points: number;
+  social_shares: number;
+  offer_clicks: number;
+  withdrawal_eligible: boolean;
+  login_streak: number;
+  last_login_date: string;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -81,6 +87,13 @@ export interface WithdrawalRequest {
   admin_notes?: string;
 }
 
+export interface DailyLogin {
+  id: string;
+  user_uuid: string;
+  login_date: string; // YYYY-MM-DD format
+  created_at: Timestamp;
+}
+
 // Auth functions
 export const signUp = async (email: string, password: string) => {
   try {
@@ -97,12 +110,18 @@ export const signUp = async (email: string, password: string) => {
       email: user.email || '',
       username: null,
       referral_code: referralCode,
-      earnings: 100, // Signup bonus
+      earnings: 200, // Signup bonus
       total_clicks: 0,
       total_referrals: 0,
       completed_offers: 0,
       total_donated: 0,
       influence_score: 0,
+      total_points: 0,
+      social_shares: 0,
+      offer_clicks: 0,
+      withdrawal_eligible: false,
+      login_streak: 0,
+      last_login_date: '',
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
@@ -163,12 +182,18 @@ export const signInWithGoogle = async () => {
         email: user.email || '',
         username: user.displayName || null,
         referral_code: referralCode,
-        earnings: 100,
+        earnings: 200,
         total_clicks: 0,
         total_referrals: 0,
         completed_offers: 0,
         total_donated: 0,
         influence_score: 0,
+        total_points: 0,
+        social_shares: 0,
+        offer_clicks: 0,
+        withdrawal_eligible: false,
+        login_streak: 0,
+        last_login_date: '',
         created_at: Timestamp.now(),
         updated_at: Timestamp.now(),
       });
@@ -249,12 +274,13 @@ export const trackReferralClick = async (userUUID: string, referralCode: string)
     
     await addDoc(collection(db, 'clicks'), clickData);
     
-    // Update user's total clicks and influence score
+    // Update user's total clicks, points and influence score
     const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
     if (!userDoc.empty) {
       const uid = userDoc.docs[0].id;
       const profile = userDoc.docs[0].data() as UserProfile;
       const newTotalClicks = (profile.total_clicks || 0) + 1;
+      const newPoints = (profile.total_points || 0) + 1;
       const newInfluenceScore = calculateInfluenceScore(
         profile.total_donated || 0,
         profile.total_referrals || 0,
@@ -262,8 +288,11 @@ export const trackReferralClick = async (userUUID: string, referralCode: string)
       );
       await updateUserProfile(uid, {
         total_clicks: newTotalClicks,
+        total_points: newPoints,
         influence_score: newInfluenceScore,
       });
+      
+      await checkWithdrawalEligibility(userUUID);
     }
   } catch (error) {
     console.error('Error tracking click:', error);
@@ -302,12 +331,13 @@ export const createReferralRecord = async (referrerUUID: string, referredUUID: s
     
     await addDoc(collection(db, 'referrals'), referralData);
     
-    // Update referrer's total referrals, earnings, and influence score
+    // Update referrer's total referrals, earnings, points and influence score
     const referrerDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', referrerUUID)));
     if (!referrerDoc.empty) {
       const uid = referrerDoc.docs[0].id;
       const profile = referrerDoc.docs[0].data() as UserProfile;
       const newTotalReferrals = (profile.total_referrals || 0) + 1;
+      const newPoints = (profile.total_points || 0) + 50; // Biggest point reward
       const newInfluenceScore = calculateInfluenceScore(
         profile.total_donated || 0,
         newTotalReferrals,
@@ -316,8 +346,11 @@ export const createReferralRecord = async (referrerUUID: string, referredUUID: s
       await updateUserProfile(uid, {
         total_referrals: newTotalReferrals,
         earnings: (profile.earnings || 0) + 50, // Referral bonus
+        total_points: newPoints,
         influence_score: newInfluenceScore,
       });
+      
+      await checkWithdrawalEligibility(referrerUUID);
     }
   } catch (error) {
     console.error('Error creating referral record:', error);
@@ -358,12 +391,13 @@ export const recordDonation = async (userUUID: string, amount: number, currency:
     
     await addDoc(collection(db, 'donations'), donationData);
     
-    // Update user's total_donated and influence_score
+    // Update user's total_donated, points and influence_score
     const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
     if (!userDoc.empty) {
       const uid = userDoc.docs[0].id;
       const profile = userDoc.docs[0].data() as UserProfile;
       const newTotalDonated = (profile.total_donated || 0) + amount;
+      const newPoints = (profile.total_points || 0) + (amount * 10); // 10 points per $1
       const newInfluenceScore = calculateInfluenceScore(
         newTotalDonated,
         profile.total_referrals || 0,
@@ -371,8 +405,11 @@ export const recordDonation = async (userUUID: string, amount: number, currency:
       );
       await updateUserProfile(uid, {
         total_donated: newTotalDonated,
+        total_points: newPoints,
         influence_score: newInfluenceScore,
       });
+      
+      await checkWithdrawalEligibility(userUUID);
     }
     
     // Update global pot total
@@ -513,15 +550,27 @@ export const completeOffer = async (userUUID: string, offerId: string, reward: n
     
     await addDoc(collection(db, 'offer_completions'), completionData);
     
-    // Update user's earnings and completed_offers
+    // Update user's earnings, completed_offers, and points
     const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
     if (!userDoc.empty) {
       const uid = userDoc.docs[0].id;
       const profile = userDoc.docs[0].data() as UserProfile;
+      const newEarnings = (profile.earnings || 0) + reward;
+      const newCompletedOffers = (profile.completed_offers || 0) + 1;
+      const newPoints = (profile.total_points || 0) + 5; // 5 points for completing offer
+      
       await updateUserProfile(uid, {
-        earnings: (profile.earnings || 0) + reward,
-        completed_offers: (profile.completed_offers || 0) + 1,
+        earnings: newEarnings,
+        completed_offers: newCompletedOffers,
+        total_points: newPoints,
       });
+      
+      console.log(`Updated user ${userUUID}: earnings=${newEarnings}, offers=${newCompletedOffers}, points=${newPoints}`);
+      
+      // Check withdrawal eligibility after offer completion
+      await checkWithdrawalEligibility(userUUID);
+    } else {
+      console.error('User not found with UUID:', userUUID);
     }
   } catch (error) {
     console.error('Error completing offer:', error);
@@ -561,6 +610,183 @@ export const subscribeToOfferCompletions = (userUUID: string, callback: (complet
     const completedIds = snapshot.docs.map(doc => doc.data().offer_id);
     callback(completedIds);
   });
+};
+
+// Migrate existing user to have new fields
+export const migrateUserProfile = async (uid: string) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      const profile = userDoc.data();
+      
+      // Check if user needs migration (missing new fields)
+      const needsMigration = (
+        profile.total_points === undefined || 
+        profile.social_shares === undefined ||
+        profile.offer_clicks === undefined ||
+        profile.withdrawal_eligible === undefined
+      );
+      
+      if (needsMigration) {
+        const updates = {
+          total_points: profile.total_points || 0,
+          social_shares: profile.social_shares || 0,
+          offer_clicks: profile.offer_clicks || 0,
+          withdrawal_eligible: profile.withdrawal_eligible || false,
+          login_streak: profile.login_streak || 0,
+          last_login_date: profile.last_login_date || '',
+          updated_at: Timestamp.now(),
+        };
+        
+        await updateDoc(doc(db, 'users', uid), updates);
+        console.log('User migrated successfully:', uid, updates);
+      }
+    }
+  } catch (error) {
+    console.error('Error migrating user:', error);
+  }
+};
+
+// Daily login tracking
+export const trackDailyLogin = async (userUUID: string) => {
+  try {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Check if user already logged in today
+    const loginQuery = query(
+      collection(db, 'daily_logins'),
+      where('user_uuid', '==', userUUID),
+      where('login_date', '==', today)
+    );
+    const loginSnap = await getDocs(loginQuery);
+    
+    if (loginSnap.empty) {
+      // Record today's login
+      const loginData: DailyLogin = {
+        id: uuidv4(),
+        user_uuid: userUUID,
+        login_date: today,
+        created_at: Timestamp.now(),
+      };
+      
+      await addDoc(collection(db, 'daily_logins'), loginData);
+      
+      // Update user's login streak
+      const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
+      if (!userDoc.empty) {
+        const uid = userDoc.docs[0].id;
+        const profile = userDoc.docs[0].data() as UserProfile;
+        
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        let newStreak = 1;
+        if (profile.last_login_date === yesterdayStr) {
+          // Consecutive day
+          newStreak = (profile.login_streak || 0) + 1;
+        }
+        
+        const newPoints = (profile.total_points || 0) + 1; // +1 point for daily login
+        
+        await updateUserProfile(uid, {
+          login_streak: newStreak,
+          last_login_date: today,
+          total_points: newPoints,
+        });
+        
+        console.log(`Daily login tracked: streak=${newStreak}, points=${newPoints}`);
+        return newStreak;
+      }
+    }
+    
+    return 0;
+  } catch (error) {
+    console.error('Error tracking daily login:', error);
+    return 0;
+  }
+};
+
+// Manually sync user stats from all collections
+export const syncUserStats = async (userUUID: string) => {
+  try {
+    console.log('Syncing user stats for:', userUUID);
+    
+    // Get user document
+    const userQuery = query(collection(db, 'users'), where('uuid', '==', userUUID));
+    const userSnap = await getDocs(userQuery);
+    
+    if (userSnap.empty) {
+      console.error('User not found:', userUUID);
+      return;
+    }
+    
+    const uid = userSnap.docs[0].id;
+    const currentProfile = userSnap.docs[0].data() as UserProfile;
+    
+    // Count clicks
+    const clicksQuery = query(collection(db, 'clicks'), where('user_uuid', '==', userUUID));
+    const clicksSnap = await getDocs(clicksQuery);
+    const totalClicks = clicksSnap.size;
+    
+    // Count referrals
+    const referralsQuery = query(collection(db, 'referrals'), where('referrer_uuid', '==', userUUID));
+    const referralsSnap = await getDocs(referralsQuery);
+    const totalReferrals = referralsSnap.size;
+    
+    // Count completed offers and calculate earnings from them
+    const offersQuery = query(collection(db, 'offer_completions'), where('user_uuid', '==', userUUID));
+    const offersSnap = await getDocs(offersQuery);
+    const completedOffers = offersSnap.size;
+    const offerEarnings = offersSnap.docs.reduce((sum, doc) => sum + (doc.data().reward || 0), 0);
+    
+    // Calculate total earnings: signup bonus + referral bonuses + offer earnings
+    const signupBonus = 200;
+    const referralEarnings = totalReferrals * 50;
+    const totalEarnings = signupBonus + referralEarnings + offerEarnings;
+    
+    // Calculate total points
+    const clickPoints = totalClicks * 1;
+    const referralPoints = totalReferrals * 50;
+    const offerPoints = completedOffers * 5;
+    const socialPoints = (currentProfile.social_shares || 0) * 2;
+    const donationPoints = (currentProfile.total_donated || 0) * 10;
+    const totalPoints = clickPoints + referralPoints + offerPoints + socialPoints + donationPoints;
+    
+    // Update user profile with synced data
+    const updates = {
+      total_clicks: totalClicks,
+      total_referrals: totalReferrals,
+      completed_offers: completedOffers,
+      earnings: totalEarnings,
+      total_points: totalPoints,
+      influence_score: calculateInfluenceScore(
+        currentProfile.total_donated || 0,
+        totalReferrals,
+        totalClicks
+      ),
+      updated_at: Timestamp.now(),
+    };
+    
+    await updateDoc(doc(db, 'users', uid), updates);
+    
+    console.log('User stats synced:', {
+      userUUID,
+      totalClicks,
+      totalReferrals,
+      completedOffers,
+      totalEarnings,
+      totalPoints
+    });
+    
+    // Check withdrawal eligibility after sync
+    await checkWithdrawalEligibility(userUUID);
+    
+    return updates;
+  } catch (error) {
+    console.error('Error syncing user stats:', error);
+    throw error;
+  }
 };
 
 // Withdrawal functions
@@ -616,4 +842,130 @@ export const subscribeToWithdrawals = (userUUID: string, callback: (withdrawals:
     const withdrawals = snapshot.docs.map(doc => doc.data() as WithdrawalRequest);
     callback(withdrawals);
   });
+};
+
+// Social share tracking
+export const trackSocialShare = async (userUUID: string, platform: string) => {
+  try {
+    const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
+    if (!userDoc.empty) {
+      const uid = userDoc.docs[0].id;
+      const profile = userDoc.docs[0].data() as UserProfile;
+      const newShares = (profile.social_shares || 0) + 1;
+      const newPoints = (profile.total_points || 0) + 2;
+      
+      await updateUserProfile(uid, {
+        social_shares: newShares,
+        total_points: newPoints,
+      });
+      
+      await checkWithdrawalEligibility(userUUID);
+    }
+  } catch (error) {
+    console.error('Error tracking social share:', error);
+  }
+};
+
+// Offer click tracking
+export const trackOfferClick = async (userUUID: string, offerId: string) => {
+  try {
+    const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
+    if (!userDoc.empty) {
+      const uid = userDoc.docs[0].id;
+      const profile = userDoc.docs[0].data() as UserProfile;
+      const newOfferClicks = (profile.offer_clicks || 0) + 1;
+      const newPoints = (profile.total_points || 0) + 1;
+      
+      await updateUserProfile(uid, {
+        offer_clicks: newOfferClicks,
+        total_points: newPoints,
+      });
+      
+      await checkWithdrawalEligibility(userUUID);
+    }
+  } catch (error) {
+    console.error('Error tracking offer click:', error);
+  }
+};
+
+// Check withdrawal eligibility
+export const checkWithdrawalEligibility = async (userUUID: string) => {
+  try {
+    const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
+    if (!userDoc.empty) {
+      const uid = userDoc.docs[0].id;
+      const profile = userDoc.docs[0].data() as UserProfile;
+      
+      const requirements = {
+        hasDonation: (profile.total_donated || 0) >= 1,
+        hasReferrals: (profile.total_referrals || 0) >= 3,
+        hasClicks: (profile.total_clicks || 0) >= 50,
+        hasOffers: (profile.completed_offers || 0) >= 5,
+        hasShares: (profile.social_shares || 0) >= 10,
+        hasPoints: (profile.total_points || 0) >= 100,
+        accountAge: (Date.now() - profile.created_at.toMillis()) >= (7 * 24 * 60 * 60 * 1000) // 7 days
+      };
+      
+      const isEligible = Object.values(requirements).every(req => req);
+      
+      if (isEligible !== profile.withdrawal_eligible) {
+        await updateUserProfile(uid, {
+          withdrawal_eligible: isEligible,
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error checking withdrawal eligibility:', error);
+  }
+};
+
+// Get withdrawal requirements progress
+export const getWithdrawalProgress = (profile: UserProfile) => {
+  const accountAgeMs = Date.now() - profile.created_at.toMillis();
+  const accountAgeDays = accountAgeMs / (24 * 60 * 60 * 1000);
+  
+  return {
+    donation: {
+      current: profile.total_donated || 0,
+      required: 1,
+      completed: (profile.total_donated || 0) >= 1,
+      label: 'Crypto Donation ($1+)'
+    },
+    referrals: {
+      current: profile.total_referrals || 0,
+      required: 3,
+      completed: (profile.total_referrals || 0) >= 3,
+      label: 'Successful Referrals'
+    },
+    clicks: {
+      current: profile.total_clicks || 0,
+      required: 50,
+      completed: (profile.total_clicks || 0) >= 50,
+      label: 'Referral Link Clicks'
+    },
+    offers: {
+      current: profile.completed_offers || 0,
+      required: 5,
+      completed: (profile.completed_offers || 0) >= 5,
+      label: 'Completed Offers'
+    },
+    shares: {
+      current: profile.social_shares || 0,
+      required: 10,
+      completed: (profile.social_shares || 0) >= 10,
+      label: 'Social Media Shares'
+    },
+    points: {
+      current: profile.total_points || 0,
+      required: 100,
+      completed: (profile.total_points || 0) >= 100,
+      label: 'Total Activity Points'
+    },
+    accountAge: {
+      current: Math.floor(accountAgeDays),
+      required: 7,
+      completed: accountAgeDays >= 7,
+      label: 'Account Age (Days)'
+    }
+  };
 };

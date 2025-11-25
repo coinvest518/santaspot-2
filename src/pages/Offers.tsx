@@ -9,7 +9,7 @@ import { StatsCards } from '../components/stats-cards'
 import { OffersFilter } from '../components/offers-filter'
 import { Clock, Coins, GamepadIcon, ClipboardList, ListTodoIcon } from 'lucide-react'
 import { useFirebaseUser } from '@/hooks/useFirebaseUser'
-import { completeOffer, subscribeToOfferCompletions } from '@/lib/firebase'
+import { completeOffer, subscribeToOfferCompletions, trackOfferClick } from '@/lib/firebase'
 import type { Offer, UserStats } from '../types/offers'
 
 const sampleOffers: Offer[] = [
@@ -19,7 +19,7 @@ const sampleOffers: Offer[] = [
     title: 'Support Strong Offspring Initiative',
     description: 'Make a donation to The Strong Offspring Initiative and earn rewards',
     category: 'tasks',
-    image_file: '/images/try.jpg',
+    image_file: '/images/try2.png',
     reward: 5.0,
     is_active: true,
     estimated_time: '3 mins',
@@ -32,7 +32,7 @@ const sampleOffers: Offer[] = [
     title: 'Support Real Estate & Land Investing',
     description: 'Donate to Real Estate and Land Investing initiative',
     category: 'tasks',
-    image_file: '/images/try.jpg',
+    image_file: '/images/try2.png',
     reward: 5.0,
     is_active: true,
     estimated_time: '3 mins',
@@ -46,7 +46,7 @@ const sampleOffers: Offer[] = [
     title: 'Visit DisputeAI',
     description: 'Check out DisputeAI and explore their services',
     category: 'tasks',
-    image_file: '/images/try.jpg',
+    image_file: '/images/try2.png',
     reward: 0.50,
     is_active: true,
     estimated_time: '2 mins',
@@ -59,7 +59,7 @@ const sampleOffers: Offer[] = [
     title: 'Visit ConsumerAI',
     description: 'Explore ConsumerAI information and services',
     category: 'tasks',
-    image_file: '/images/try.jpg',
+    image_file: '/images/try2.png',
     reward: 0.75,
     is_active: true,
     estimated_time: '2 mins',
@@ -72,7 +72,7 @@ const sampleOffers: Offer[] = [
     title: 'Visit Fortis Proles',
     description: 'Discover Fortis Proles and their offerings',
     category: 'tasks',
-    image_file: '/images/try.jpg',
+    image_file: '/images/try2.png',
     reward: 1.0,
     is_active: true,
     estimated_time: '2 mins',
@@ -85,7 +85,7 @@ const sampleOffers: Offer[] = [
     title: 'Visit FDWA',
     description: 'Check out FDWA site and learn more',
     category: 'tasks',
-    image_file: '/images/try.jpg',
+    image_file: '/images/try2.png',
     reward: 0.60,
     is_active: true,
     estimated_time: '2 mins',
@@ -98,7 +98,7 @@ const sampleOffers: Offer[] = [
     title: 'Support Safe Delivery Project',
     description: 'Visit and learn about The Safe Delivery Project',
     category: 'tasks',
-    image_file: '/images/try.jpg',
+    image_file: '/images/try2.png',
     reward: 1.25,
     is_active: true,
     estimated_time: '3 mins',
@@ -165,6 +165,15 @@ const Offers: React.FC = () => {
     }
 
     setProcessingOffer(offer.id);
+    
+    // Track offer click for points
+    try {
+      await trackOfferClick(userProfile.uuid, offer.id);
+      toast.success(`+1 point for clicking offer!`);
+    } catch (error) {
+      console.error('Failed to track offer click:', error);
+    }
+    
     window.open(offer.link, '_blank');
     
     toast.success(`Opening ${offer.title}. Click "Mark as Complete" when done!`, {
@@ -201,9 +210,9 @@ const Offers: React.FC = () => {
             <h1 className="text-3xl font-bold text-white mb-6">Offer Wall</h1>
             {userProfile && (
               <StatsCards stats={{
-                total_earned: userProfile.earnings,
-                completed_offers: userProfile.completed_offers,
-                current_streak: 0
+                total_earned: userProfile.earnings || 0,
+                completed_offers: userProfile.completed_offers || 0,
+                current_streak: userProfile.login_streak || 0
               }} />
             )}
           </div>

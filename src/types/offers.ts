@@ -15,13 +15,13 @@ export type Offer = {
 };
 
 export interface UserStats {
-  user_id: string;
-  rank: number;
+  user_id?: string;
+  rank?: number;
   total_earned: number;
   completed_offers: number;
   current_streak: number;
   last_offer_completed?: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface OfferClick {

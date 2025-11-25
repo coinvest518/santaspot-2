@@ -313,7 +313,7 @@ Search functionality searches:
   title: 'Offer Title',
   description: 'Brief description of what to do',
   category: 'tasks', // or 'games', 'surveys'
-  image_file: '/images/try.jpg',
+  image_file: '/images/try2.png',
   reward: 1.50, // Dollar amount
   is_active: true,
   estimated_time: '5 mins',

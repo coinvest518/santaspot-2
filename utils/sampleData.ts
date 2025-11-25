@@ -22,7 +22,7 @@ export const getSampleOffers = (): Offer[] => {
       id: '1',
       title: 'Adventure Quest',
       description: 'Embark on an epic journey through mystical lands',
-      image_url: '/images/try.jpg', // Local image path from public folder
+      image_url: '/images/try2.png', // Local image path from public folder
       reward: 5.00,
       category: 'games',
       link: 'https://example.com/game1',
