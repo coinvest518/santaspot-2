@@ -10,13 +10,13 @@ npm install firebase
 ### Step 2: Set Up Environment Variables
 Create `.env.local` in your project root:
 ```
-VITE_FIREBASE_API_KEY=AIzaSyCK9wou94aEgnxpmJHQne62fijTGlBo1TY
-VITE_FIREBASE_AUTH_DOMAIN=santaspot-d86b8.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=santaspot-d86b8
-VITE_FIREBASE_STORAGE_BUCKET=santaspot-d86b8.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=394172267696
-VITE_FIREBASE_APP_ID=1:394172267696:web:8d46607fc70075ccac4f75
-VITE_FIREBASE_MEASUREMENT_ID=G-P60Q9C9VLL
+VITE_FIREBASE_API_KEY=your_api_key_here
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
 ### Step 3: Update App.tsx

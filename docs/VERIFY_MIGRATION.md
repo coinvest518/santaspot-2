@@ -10,9 +10,9 @@ cat .env | grep FIREBASE
 
 Expected output:
 ```
-VITE_FIREBASE_API_KEY=AIzaSyCK9wou94aEgnxpmJHQne62fijTGlBo1TY
-VITE_FIREBASE_AUTH_DOMAIN=santaspot-d86b8.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=santaspot-d86b8
+VITE_FIREBASE_API_KEY=your_api_key_here
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
 ...
 ```
 
