@@ -9,20 +9,10 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => ({
     host: "::",
     port: mode === 'development' ? 8080 : undefined,
     proxy: {
-      '/api/webhook': {
-        target: 'https://santaspot.xyz',
+      '/api': {
+        target: 'http://localhost:3001',
         changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        headers: {
-          'Stripe-Signature': ''
-        }
-      },
-      '/stripe': {
-        target: 'https://api.stripe.com',
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/stripe/, '')
+        secure: false
       }
     }
   },

@@ -414,6 +414,15 @@ export const recordDonation = async (userUUID: string, amount: number, currency:
     
     // Update global pot total
     await updateGlobalPot(amount);
+    
+    // Add to current prize pool
+    const currentPool = await getCurrentPrizePool();
+    if (currentPool) {
+      await updateDoc(doc(db, 'prize_pools', currentPool.id), {
+        total_amount: currentPool.total_amount + amount,
+        updated_at: Timestamp.now(),
+      });
+    }
   } catch (error) {
     console.error('Error recording donation:', error);
     throw error;
@@ -469,6 +478,29 @@ export interface GlobalPot {
   total_donations: number;
   total_users: number;
   updated_at: Timestamp;
+}
+
+export interface PrizePool {
+  id: string;
+  name: string;
+  total_amount: number;
+  draw_date: Timestamp;
+  status: 'active' | 'drawing' | 'completed';
+  winner_uuid?: string;
+  winner_username?: string;
+  entries: number;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface PrizeEntry {
+  id: string;
+  pool_id: string;
+  user_uuid: string;
+  username: string;
+  influence_score: number;
+  entries: number;
+  created_at: Timestamp;
 }
 
 export const updateGlobalPot = async (donationAmount: number) => {
@@ -635,10 +667,9 @@ export const migrateUserProfile = async (uid: string) => {
           withdrawal_eligible: profile.withdrawal_eligible || false,
           login_streak: profile.login_streak || 0,
           last_login_date: profile.last_login_date || '',
-          updated_at: Timestamp.now(),
         };
         
-        await updateDoc(doc(db, 'users', uid), updates);
+        await updateUserProfile(uid, updates);
         console.log('User migrated successfully:', uid, updates);
       }
     }
@@ -765,10 +796,9 @@ export const syncUserStats = async (userUUID: string) => {
         totalReferrals,
         totalClicks
       ),
-      updated_at: Timestamp.now(),
     };
     
-    await updateDoc(doc(db, 'users', uid), updates);
+    await updateUserProfile(uid, updates);
     
     console.log('User stats synced:', {
       userUUID,
@@ -968,4 +998,155 @@ export const getWithdrawalProgress = (profile: UserProfile) => {
       label: 'Account Age (Days)'
     }
   };
+};
+
+// Prize Pool Functions
+export const createPrizePool = async (name: string, drawDate: Date, initialAmount: number = 100) => {
+  try {
+    const poolData: PrizePool = {
+      id: uuidv4(),
+      name,
+      total_amount: initialAmount,
+      draw_date: Timestamp.fromDate(drawDate),
+      status: 'active',
+      entries: 0,
+      created_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
+    };
+    
+    await setDoc(doc(db, 'prize_pools', poolData.id), poolData);
+    return poolData;
+  } catch (error) {
+    console.error('Error creating prize pool:', error);
+    throw error;
+  }
+};
+
+export const getCurrentPrizePool = async (): Promise<PrizePool | null> => {
+  try {
+    const q = query(
+      collection(db, 'prize_pools'),
+      where('status', '==', 'active')
+    );
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      return snapshot.docs[0].data() as PrizePool;
+    }
+    
+    // Create initial Thanksgiving pool if none exists (2 days away!)
+    const thanksgiving = new Date('2025-11-27T18:00:00Z'); // Thanksgiving 6 PM UTC
+    return await createPrizePool('Thanksgiving Draw', thanksgiving, 100);
+  } catch (error) {
+    console.error('Error getting current prize pool:', error);
+    return null;
+  }
+};
+
+export const subscribeToCurrentPrizePool = (callback: (pool: PrizePool | null) => void) => {
+  const q = query(
+    collection(db, 'prize_pools'),
+    where('status', '==', 'active')
+  );
+  return onSnapshot(q, (snapshot) => {
+    if (!snapshot.empty) {
+      callback(snapshot.docs[0].data() as PrizePool);
+    } else {
+      callback(null);
+    }
+  });
+};
+
+export const enterPrizePool = async (userUUID: string, username: string, influenceScore: number) => {
+  try {
+    const currentPool = await getCurrentPrizePool();
+    if (!currentPool) {
+      throw new Error('No active prize pool');
+    }
+    
+    // Check if user already entered
+    const existingEntry = await getDocs(query(
+      collection(db, 'prize_entries'),
+      where('pool_id', '==', currentPool.id),
+      where('user_uuid', '==', userUUID)
+    ));
+    
+    if (!existingEntry.empty) {
+      // Update existing entry
+      const entryDoc = existingEntry.docs[0];
+      await updateDoc(entryDoc.ref, {
+        influence_score: influenceScore,
+        entries: Math.max(1, Math.floor(influenceScore / 10)),
+      });
+    } else {
+      // Create new entry
+      const entryData: PrizeEntry = {
+        id: uuidv4(),
+        pool_id: currentPool.id,
+        user_uuid: userUUID,
+        username,
+        influence_score: influenceScore,
+        entries: Math.max(1, Math.floor(influenceScore / 10)),
+        created_at: Timestamp.now(),
+      };
+      
+      await addDoc(collection(db, 'prize_entries'), entryData);
+      
+      // Update pool entry count
+      await updateDoc(doc(db, 'prize_pools', currentPool.id), {
+        entries: currentPool.entries + 1,
+        updated_at: Timestamp.now(),
+      });
+    }
+  } catch (error) {
+    console.error('Error entering prize pool:', error);
+    throw error;
+  }
+};
+
+export const getUserPrizeEntry = async (userUUID: string): Promise<PrizeEntry | null> => {
+  try {
+    const currentPool = await getCurrentPrizePool();
+    if (!currentPool) return null;
+    
+    const q = query(
+      collection(db, 'prize_entries'),
+      where('pool_id', '==', currentPool.id),
+      where('user_uuid', '==', userUUID)
+    );
+    const snapshot = await getDocs(q);
+    
+    return snapshot.empty ? null : snapshot.docs[0].data() as PrizeEntry;
+  } catch (error) {
+    console.error('Error getting user prize entry:', error);
+    return null;
+  }
+};
+
+export const initializePrizePools = async () => {
+  try {
+    // Check if we have active pools
+    const activePool = await getCurrentPrizePool();
+    if (activePool) return;
+    
+    // Create Thanksgiving pool (first draw - 2 days away!)
+    const thanksgiving = new Date('2025-11-27T18:00:00Z');
+    await createPrizePool('Thanksgiving Draw', thanksgiving, 100);
+    
+    console.log('Prize pools initialized');
+  } catch (error) {
+    console.error('Error initializing prize pools:', error);
+  }
+};
+
+export const createNextPrizePool = async () => {
+  try {
+    // Create Christmas pool after Thanksgiving
+    const christmas = new Date('2025-12-25T18:00:00Z');
+    await createPrizePool('Christmas Draw', christmas, 200);
+    
+    console.log('Next prize pool created for Christmas');
+  } catch (error) {
+    console.error('Error creating next prize pool:', error);
+  }
 };

@@ -2,13 +2,6 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
-interface PaymentProcessingResult {
-  status: PaymentStatus;
-  error: string;
-  paymentAmount: number;
-  loading: boolean;
-}
-
 type PaymentStatus = 'success' | 'processing' | 'failed' | 'checking';
 
 export const usePaymentProcessing = (

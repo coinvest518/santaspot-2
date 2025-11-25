@@ -1,11 +1,10 @@
-// PaymentForm.tsx
 import React, { useState } from 'react';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { CheckCircle, Loader2 } from 'lucide-react';
 
-// Make sure this matches your webhook API version
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY, {
   apiVersion: '2024-11-20.acacia',
 });
@@ -22,7 +21,7 @@ const CheckoutForm = () => {
     if (!stripe || !elements) {
       toast({
         title: "Error",
-        description: "Stripe has not been properly initialized.",
+        description: "Payment system not ready. Please try again.",
         variant: "destructive",
       });
       return;
@@ -31,44 +30,25 @@ const CheckoutForm = () => {
     setIsProcessing(true);
 
     try {
-      const { error: paymentError } = await stripe.confirmPayment({
+      const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/payment-completion`,
-          // Remove metadata from confirmParams as it's not allowed here
         },
-        // Remove redirect parameter as it must be "always"
       });
 
-      if (paymentError) {
+      if (error) {
         toast({
           title: "Payment Failed",
-          description: paymentError.message || "An error occurred during payment.",
+          description: error.message || "Your donation could not be processed.",
           variant: "destructive",
-        });
-        console.error('Payment error:', paymentError);
-        return;
-      }
-
-      // Check PaymentIntent status
-      //  This is not available in this context.  The paymentIntent is returned in the redirect.
-      if (true) { // Replace with actual success check after redirect
-        toast({
-          title: "Payment Successful",
-          description: "Your payment has been processed successfully.",
-          variant: "default",
-        });
-      } else {
-        toast({          
-          title: "Payment Failed",
-          description: "Payment was not successful.",
         });
       }
     } catch (err) {
       console.error('Payment error:', err);
       toast({
         title: "Error",
-        description: "An unexpected error occurred during payment processing.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -86,9 +66,19 @@ const CheckoutForm = () => {
       <Button 
         type="submit" 
         disabled={!stripe || isProcessing}
-        className="w-full"
+        className="w-full bg-red-600 hover:bg-red-700"
       >
-        {isProcessing ? "Processing..." : "Pay now"}
+        {isProcessing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Processing Donation...
+          </>
+        ) : (
+          <>
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Complete Donation
+          </>
+        )}
       </Button>
     </form>
   );
@@ -100,7 +90,12 @@ interface PaymentFormProps {
 
 export const PaymentForm: React.FC<PaymentFormProps> = ({ clientSecret }) => {
   if (!clientSecret) {
-    return <div>Loading payment form...</div>;
+    return (
+      <div className="flex items-center justify-center p-6">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <span className="ml-2">Loading payment form...</span>
+      </div>
+    );
   }
 
   const options = {
@@ -108,9 +103,10 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({ clientSecret }) => {
     appearance: {
       theme: 'stripe' as const,
       variables: {
-        colorPrimary: '#0066cc',
+        colorPrimary: '#dc2626', // Christmas red
         colorBackground: '#ffffff',
-        colorText: '#30313d',
+        colorText: '#1f2937',
+        borderRadius: '8px',
       },
     },
   };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { subscribeToCurrentPrizePool, PrizePool } from '@/lib/firebase';
 
 const DrawTimer = () => {
   const [timeLeft, setTimeLeft] = useState<{
@@ -7,23 +8,31 @@ const DrawTimer = () => {
     minutes: number;
     seconds: number;
   }>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [prizePool, setPrizePool] = useState<PrizePool | null>(null);
 
   const calculateTimeLeft = () => {
-    // Set the next draw date to January 1st, 2025
-    const drawDate = new Date('2025-01-01T00:00:00Z');
+    let drawDate;
+    
+    if (!prizePool) {
+      // Default to Thanksgiving 2025 (2 days away!)
+      drawDate = new Date('2025-11-27T18:00:00Z');
+    } else {
+      drawDate = prizePool.draw_date.toDate();
+    }
+    
     const now = new Date();
     const difference = drawDate.getTime() - now.getTime();
 
-    // If the draw date has passed, set next draw to January 20th, 2025
     if (difference < 0) {
-      const fallbackDate = new Date('2025-01-20T00:00:00Z');
-      const fallbackDifference = fallbackDate.getTime() - now.getTime();
-
+      // If date has passed, show Christmas
+      const christmas = new Date('2025-12-25T18:00:00Z');
+      const christmasDifference = christmas.getTime() - now.getTime();
+      
       return {
-        days: Math.floor(fallbackDifference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((fallbackDifference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((fallbackDifference / 1000 / 60) % 60),
-        seconds: Math.floor((fallbackDifference / 1000) % 60)
+        days: Math.floor(christmasDifference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((christmasDifference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((christmasDifference / 1000 / 60) % 60),
+        seconds: Math.floor((christmasDifference / 1000) % 60)
       };
     }
 
@@ -36,12 +45,21 @@ const DrawTimer = () => {
   };
 
   useEffect(() => {
+    // Subscribe to current prize pool
+    const unsubscribe = subscribeToCurrentPrizePool((pool) => {
+      setPrizePool(pool);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(calculateTimeLeft());
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [prizePool]);
 
   return (
     <div className="bg-white/90 backdrop-blur rounded-lg p-6 shadow-lg">

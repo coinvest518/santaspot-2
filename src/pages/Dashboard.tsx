@@ -8,15 +8,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   generateReferralLink,
   getUserDonations,
-  subscribeToClicks,
-  subscribeToReferrals,
   subscribeToUserProfile,
   subscribeToGlobalPot,
   trackSocialShare,
-  syncUserStats,
+  enterPrizePool,
+  getUserPrizeEntry,
   DonationRecord,
-  ReferralRecord,
-  GlobalPot,
 } from '@/lib/firebase';
 
 interface DashboardData {
@@ -71,16 +68,9 @@ const Dashboard = () => {
       referral_code,
     }));
     
-    // Sync user stats first to ensure data is current
-    syncUserStats(uuid).then(() => {
-      console.log('Dashboard: User stats synced');
-    }).catch(error => {
-      console.error('Dashboard: Failed to sync user stats:', error);
-    });
-    
     // --- Set up real-time listeners ---
 
-    const unsubProfile = subscribeToUserProfile(uid, (profile) => {
+    const unsubProfile = subscribeToUserProfile(uid, async (profile) => {
       if (profile) {
         console.log('Dashboard: Profile updated', profile);
         setDashboardData(prev => ({
@@ -93,19 +83,24 @@ const Dashboard = () => {
           referral_clicks: profile.total_clicks || 0,
           referrals: profile.total_referrals || 0,
         }));
+        
+        // Auto-enter into prize pool if withdrawal eligible
+        if (profile.withdrawal_eligible && profile.influence_score > 0) {
+          try {
+            const existingEntry = await getUserPrizeEntry(profile.uuid);
+            if (!existingEntry) {
+              await enterPrizePool(profile.uuid, profile.username || 'User', profile.influence_score);
+              console.log('User automatically entered into prize pool');
+            }
+          } catch (error) {
+            console.error('Error entering prize pool:', error);
+          }
+        }
       }
       setLoading(false);
     });
 
-    const unsubClicks = subscribeToClicks(uuid, (count) => {
-      console.log('Dashboard: Clicks updated', count);
-      setDashboardData(prev => ({ ...prev, referral_clicks: count }));
-    });
 
-    const unsubReferrals = subscribeToReferrals(uuid, (referralsList) => {
-      console.log('Dashboard: Referrals updated', referralsList.length);
-      setDashboardData(prev => ({ ...prev, referrals: referralsList.length }));
-    });
     
     // Subscribe to global pot for real-time updates
     const unsubGlobalPot = subscribeToGlobalPot((pot) => {
@@ -124,8 +119,6 @@ const Dashboard = () => {
     // Cleanup function to unsubscribe on component unmount
     return () => {
       unsubProfile();
-      unsubClicks();
-      unsubReferrals();
       unsubGlobalPot();
     };
 
@@ -222,21 +215,6 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Button
-            onClick={() => {
-              if (initialUserProfile?.uuid) {
-                syncUserStats(initialUserProfile.uuid).then(() => {
-                  toast.success('Stats refreshed!');
-                }).catch(() => {
-                  toast.error('Failed to refresh stats');
-                });
-              }
-            }}
-            variant="outline"
-            size="sm"
-          >
-            🔄 Refresh
-          </Button>
           <Button>
             {dashboardData.username ? `Welcome, ${dashboardData.username}!` : 'Welcome!'}
           </Button>
@@ -343,22 +321,51 @@ const Dashboard = () => {
           </Card>
 
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Copy Your Referral Link 👇</h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={dashboardData.referralLink}
-                readOnly
-                className="flex-1 p-2 border rounded-md bg-gray-50"
-              />
-              <Button onClick={copyLink}>
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Link
-              </Button>
-              <Button onClick={copyReferralCode} variant="outline">
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Code
-              </Button>
+            <h3 className="text-lg font-semibold mb-4">🎯 Your Referral System</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Your Referral Code:</label>
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="text"
+                    value={dashboardData.referral_code}
+                    readOnly
+                    className="flex-1 p-3 border rounded-md bg-gray-50 font-mono text-lg font-bold text-center"
+                  />
+                  <Button onClick={copyReferralCode} variant="outline">
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Code
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Share this code with friends - they enter it during signup</p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-600">Your Referral Link:</label>
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="text"
+                    value={dashboardData.referralLink}
+                    readOnly
+                    className="flex-1 p-3 border rounded-md bg-gray-50 text-sm"
+                  />
+                  <Button onClick={copyLink}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Link
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Direct link - automatically applies your referral code</p>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-green-800 mb-2">💰 Referral Rewards:</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• You get $50 for each successful referral</li>
+                  <li>• You get $2 for each click on your link</li>
+                  <li>• Your friend gets $200 signup bonus</li>
+                  <li>• Both get points toward withdrawal eligibility</li>
+                </ul>
+              </div>
             </div>
           </Card>
 

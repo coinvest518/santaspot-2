@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Clicks collection - users can create clicks, read their own
+    match /clicks/{clickId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && 
+        (resource.data.user_uuid == request.auth.uid || 
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.user_uuid);
+    }
+    
+    // Referrals collection - users can create referrals, read their own
+    match /referrals/{referralId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && 
+        (resource.data.referrer_uuid == request.auth.uid || 
+         resource.data.referred_uuid == request.auth.uid ||
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.referrer_uuid ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.referred_uuid));
+    }
+    
+    // Donations collection - users can create donations, read their own
+    match /donations/{donationId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && 
+        (resource.data.user_uuid == request.auth.uid ||
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.user_uuid);
+    }
+    
+    // Offer completions collection - users can create completions, read their own
+    match /offer_completions/{completionId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && 
+        (resource.data.user_uuid == request.auth.uid ||
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.user_uuid);
+    }
+    
+    // Withdrawal requests collection - users can create requests, read their own
+    match /withdrawal_requests/{requestId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && 
+        (resource.data.user_uuid == request.auth.uid ||
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.user_uuid);
+    }
+    
+    // Daily logins collection - users can create logins, read their own
+    match /daily_logins/{loginId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && 
+        (resource.data.user_uuid == request.auth.uid ||
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.user_uuid);
+    }
+    
+    // Prize pools collection - read only for all authenticated users, write for system
+    match /prize_pools/{poolId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Prize entries collection - users can create/read their own entries
+    match /prize_entries/{entryId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null && 
+        (resource.data.user_uuid == request.auth.uid ||
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.uuid == resource.data.user_uuid);
+    }
+    
+    // Global stats collection - read for all authenticated users, write for system
+    match /globals/{globalId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}

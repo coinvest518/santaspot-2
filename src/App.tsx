@@ -37,7 +37,7 @@ const App = () => (
             <Routes>
               {/* Public routes - no layout */}
               <Route path="/" element={<Landing />} />
-              <Route path="/r/:shortCode" element={<Redirect />} />
+              <Route path="/r/:referralCode" element={<Redirect />} />
 
               {/* Protected routes with layout */}
               <Route path="/dashboard" element={
