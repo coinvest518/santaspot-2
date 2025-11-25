@@ -5,10 +5,10 @@ export type Offer = {
   title: string;
   description: string;
   category: string;
-  image_file: string; // New field for local image file name
+  image_url: string; // URL for fetching images from external sources
   reward: number;
   is_active: boolean;
-  estimated_time: string;
+  estimated_time?: string;
   link: string;
   created_at: string;
   requirements?: string[];

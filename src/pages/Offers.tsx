@@ -7,19 +7,19 @@ import { Button } from "@/components/ui/button"
 import { toast } from 'sonner'
 import { StatsCards } from '../components/stats-cards'
 import { OffersFilter } from '../components/offers-filter'
-import { Clock, Coins, GamepadIcon, ClipboardList, ListTodoIcon } from 'lucide-react'
+import { Clock, Coins, GamepadIcon, ClipboardList, ListTodoIcon, ExternalLink, ShoppingCart } from 'lucide-react'
 import { useFirebaseUser } from '@/hooks/useFirebaseUser'
 import { completeOffer, subscribeToOfferCompletions, trackOfferClick } from '@/lib/firebase'
-import type { Offer, UserStats } from '../types/offers'
+import type { Offer } from '../types/offers'
 
 const sampleOffers: Offer[] = [
-  // Donation Offers
+  // Original Donation Offers
   {
     id: 'donate-strong-offspring',
     title: 'Support Strong Offspring Initiative',
     description: 'Make a donation to The Strong Offspring Initiative and earn rewards',
     category: 'tasks',
-    image_file: '/images/try2.png',
+    image_url: '/images/try2.png',
     reward: 5.0,
     is_active: true,
     estimated_time: '3 mins',
@@ -32,7 +32,7 @@ const sampleOffers: Offer[] = [
     title: 'Support Real Estate & Land Investing',
     description: 'Donate to Real Estate and Land Investing initiative',
     category: 'tasks',
-    image_file: '/images/try2.png',
+    image_url: '/images/try2.png',
     reward: 5.0,
     is_active: true,
     estimated_time: '3 mins',
@@ -40,13 +40,13 @@ const sampleOffers: Offer[] = [
     created_at: new Date().toISOString(),
     requirements: ['Make any donation amount', 'One-time completion']
   },
-  // Website Visit Offers
+  // Original Website Visit Offers
   {
     id: 'visit-disputeai',
     title: 'Visit DisputeAI',
     description: 'Check out DisputeAI and explore their services',
     category: 'tasks',
-    image_file: '/images/try2.png',
+    image_url: '/images/try2.png',
     reward: 0.50,
     is_active: true,
     estimated_time: '2 mins',
@@ -59,7 +59,7 @@ const sampleOffers: Offer[] = [
     title: 'Visit ConsumerAI',
     description: 'Explore ConsumerAI information and services',
     category: 'tasks',
-    image_file: '/images/try2.png',
+    image_url: '/images/try2.png',
     reward: 0.75,
     is_active: true,
     estimated_time: '2 mins',
@@ -72,7 +72,7 @@ const sampleOffers: Offer[] = [
     title: 'Visit Fortis Proles',
     description: 'Discover Fortis Proles and their offerings',
     category: 'tasks',
-    image_file: '/images/try2.png',
+    image_url: '/images/try2.png',
     reward: 1.0,
     is_active: true,
     estimated_time: '2 mins',
@@ -85,7 +85,7 @@ const sampleOffers: Offer[] = [
     title: 'Visit FDWA',
     description: 'Check out FDWA site and learn more',
     category: 'tasks',
-    image_file: '/images/try2.png',
+    image_url: '/images/try2.png',
     reward: 0.60,
     is_active: true,
     estimated_time: '2 mins',
@@ -98,13 +98,183 @@ const sampleOffers: Offer[] = [
     title: 'Support Safe Delivery Project',
     description: 'Visit and learn about The Safe Delivery Project',
     category: 'tasks',
-    image_file: '/images/try2.png',
+    image_url: '/images/try2.png',
     reward: 1.25,
     is_active: true,
     estimated_time: '3 mins',
     link: 'https://chuffed.org/project/158912-the-safe-delivery-project',
     created_at: new Date().toISOString(),
     requirements: ['Visit website', 'One-time completion']
+  },
+  // New Affiliate Offers with local images
+  {
+    id: 'affiliate_hostinger',
+    title: 'Hostinger Web Hosting',
+    description: 'Get premium web hosting with 90% off. Perfect for websites and blogs.',
+    image_url: '/images/christmas-pot.png',
+    reward: 15.00,
+    category: 'affiliate',
+    link: 'https://hostinger.com/horizons?REFERRALCODE=VMKMILDHI76M',
+    requirements: ['Sign up for hosting plan', 'Complete purchase'],
+    estimated_time: '5 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_lovable',
+    title: 'Lovable AI Development',
+    description: 'Build full-stack applications with AI assistance. Revolutionary development platform.',
+    image_url: '/images/christmas-pot.png',
+    reward: 25.00,
+    category: 'affiliate',
+    link: 'https://lovable.dev/?via=daniel-wray',
+    requirements: ['Create account', 'Start first project'],
+    estimated_time: '10 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_openphone',
+    title: 'OpenPhone Business Phone',
+    description: 'Professional business phone system. Get your business number instantly.',
+    image_url: '/images/christmas-pot.png',
+    reward: 20.00,
+    category: 'affiliate',
+    link: 'https://get.openphone.com/u8t88cu9allj',
+    requirements: ['Sign up for trial', 'Set up phone number'],
+    estimated_time: '8 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_veed',
+    title: 'VEED Video Editor',
+    description: 'Professional video editing made simple. Create stunning videos online.',
+    image_url: '/images/christmas-pot.png',
+    reward: 12.00,
+    category: 'affiliate',
+    link: 'https://veed.cello.so/Y4hEgduDP5L',
+    requirements: ['Create account', 'Edit first video'],
+    estimated_time: '15 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_elevenlabs',
+    title: 'ElevenLabs AI Voice',
+    description: 'Generate realistic AI voices for your content. Revolutionary voice technology.',
+    image_url: '/images/christmas-pot.png',
+    reward: 18.00,
+    category: 'affiliate',
+    link: 'https://try.elevenlabs.io/2dh4kqbqw25i',
+    requirements: ['Sign up for account', 'Generate first voice'],
+    estimated_time: '10 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_manychat',
+    title: 'ManyChat Automation',
+    description: 'Automate your customer conversations with chatbots. Boost your business.',
+    image_url: '/images/christmas-pot.png',
+    reward: 22.00,
+    category: 'affiliate',
+    link: 'https://manychat.partnerlinks.io/gal0gascf0ml',
+    requirements: ['Create chatbot account', 'Set up first bot'],
+    estimated_time: '20 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_n8n',
+    title: 'n8n Workflow Automation',
+    description: 'Automate your workflows with powerful no-code automation platform.',
+    image_url: '/images/christmas-pot.png',
+    reward: 16.00,
+    category: 'affiliate',
+    link: 'https://n8n.partnerlinks.io/pxw8nlb4iwfh',
+    requirements: ['Sign up for account', 'Create first workflow'],
+    estimated_time: '25 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_brightdata',
+    title: 'Bright Data Proxy',
+    description: 'Premium proxy services for data collection and web scraping.',
+    image_url: '/images/christmas-pot.png',
+    reward: 30.00,
+    category: 'affiliate',
+    link: 'https://get.brightdata.com/xafa5cizt3zw',
+    requirements: ['Create account', 'Set up first proxy'],
+    estimated_time: '15 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_cointiply',
+    title: 'Cointiply Crypto Rewards',
+    description: 'Earn Bitcoin and cryptocurrency through various tasks and games.',
+    image_url: '/images/christmas-pot.png',
+    reward: 8.00,
+    category: 'crypto',
+    link: 'http://www.cointiply.com/r/agAkz',
+    requirements: ['Sign up for account', 'Complete first task'],
+    estimated_time: '10 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_ava',
+    title: 'Ava AI Assistant',
+    description: 'Advanced AI assistant for productivity and automation tasks.',
+    image_url: '/images/christmas-pot.png',
+    reward: 14.00,
+    category: 'affiliate',
+    link: 'https://meetava.sjv.io/anDyvY',
+    requirements: ['Create account', 'Try AI assistant'],
+    estimated_time: '12 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_theleap',
+    title: 'The Leap Creator Economy',
+    description: 'Join the creator economy platform and monetize your skills.',
+    image_url: '/images/christmas-pot.png',
+    reward: 10.00,
+    category: 'affiliate',
+    link: 'https://join.theleap.co/FyY11sd1KY',
+    requirements: ['Sign up for platform', 'Complete profile'],
+    estimated_time: '15 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_amazon',
+    title: 'Amazon Products',
+    description: 'Shop amazing deals on Amazon with exclusive discounts.',
+    image_url: '/images/christmas-pot.png',
+    reward: 5.00,
+    category: 'shopping',
+    link: 'https://amzn.to/4lICjtS',
+    requirements: ['Browse products', 'Make purchase'],
+    estimated_time: '5 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'affiliate_bolt',
+    title: 'Bolt Business Solutions',
+    description: 'Streamline your business operations with Bolt platform.',
+    image_url: '/images/christmas-pot.png',
+    reward: 28.00,
+    category: 'affiliate',
+    link: 'https://get.business.bolt.eu/lx55rhexokw9',
+    requirements: ['Sign up for business account', 'Complete setup'],
+    estimated_time: '20 mins',
+    is_active: true,
+    created_at: new Date().toISOString()
   }
 ];
 
@@ -268,21 +438,27 @@ const Offers: React.FC = () => {
               >
                 <Card className="overflow-hidden backdrop-blur bg-card/50 border-purple-500/20 hover:border-purple-500/40 transition-colors">
                   <div className="relative h-48 overflow-hidden bg-purple-800">
-                    {offer.image_file ? (
+                    {offer.image_url ? (
                       <img
-                        src={offer.image_file}
+                        src={offer.image_url}
                         alt={offer.title}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-purple-900">
-                        {offer.category === 'games' ? (
-                          <GamepadIcon className="w-20 h-20 text-purple-300" />
-                        ) : offer.category === 'surveys' ? (
-                          <ClipboardList className="w-20 h-20 text-purple-300" />
-                        ) : (
-                          <ListTodoIcon className="w-20 h-20 text-purple-300" />
-                        )}
+                      {offer.category === 'games' ? (
+                        <GamepadIcon className="w-20 h-20 text-purple-300" />
+                      ) : offer.category === 'surveys' ? (
+                        <ClipboardList className="w-20 h-20 text-purple-300" />
+                      ) : offer.category === 'affiliate' ? (
+                        <ExternalLink className="w-20 h-20 text-purple-300" />
+                      ) : offer.category === 'crypto' ? (
+                        <Coins className="w-20 h-20 text-purple-300" />
+                      ) : offer.category === 'shopping' ? (
+                        <ShoppingCart className="w-20 h-20 text-purple-300" />
+                      ) : (
+                        <ListTodoIcon className="w-20 h-20 text-purple-300" />
+                      )}
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
