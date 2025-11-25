@@ -69,6 +69,18 @@ export interface OfferCompletion {
   completed_at: Timestamp;
 }
 
+export interface WithdrawalRequest {
+  id: string;
+  user_uuid: string;
+  amount: number;
+  payment_method: string;
+  payment_details: string;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  created_at: Timestamp;
+  processed_at?: Timestamp;
+  admin_notes?: string;
+}
+
 // Auth functions
 export const signUp = async (email: string, password: string) => {
   try {
@@ -548,5 +560,60 @@ export const subscribeToOfferCompletions = (userUUID: string, callback: (complet
   return onSnapshot(q, (snapshot) => {
     const completedIds = snapshot.docs.map(doc => doc.data().offer_id);
     callback(completedIds);
+  });
+};
+
+// Withdrawal functions
+export const createWithdrawalRequest = async (userUUID: string, amount: number, paymentMethod: string, paymentDetails: string) => {
+  try {
+    const withdrawalData: WithdrawalRequest = {
+      id: uuidv4(),
+      user_uuid: userUUID,
+      amount,
+      payment_method: paymentMethod,
+      payment_details: paymentDetails,
+      status: 'pending',
+      created_at: Timestamp.now(),
+    };
+    
+    await addDoc(collection(db, 'withdrawal_requests'), withdrawalData);
+    return withdrawalData;
+  } catch (error) {
+    console.error('Error creating withdrawal request:', error);
+    throw error;
+  }
+};
+
+export const getUserWithdrawals = async (userUUID: string): Promise<WithdrawalRequest[]> => {
+  try {
+    const q = query(collection(db, 'withdrawal_requests'), where('user_uuid', '==', userUUID));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => doc.data() as WithdrawalRequest);
+  } catch (error) {
+    console.error('Error getting withdrawals:', error);
+    return [];
+  }
+};
+
+export const getPendingWithdrawals = async (userUUID: string): Promise<number> => {
+  try {
+    const q = query(
+      collection(db, 'withdrawal_requests'), 
+      where('user_uuid', '==', userUUID),
+      where('status', '==', 'pending')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.reduce((total, doc) => total + doc.data().amount, 0);
+  } catch (error) {
+    console.error('Error getting pending withdrawals:', error);
+    return 0;
+  }
+};
+
+export const subscribeToWithdrawals = (userUUID: string, callback: (withdrawals: WithdrawalRequest[]) => void) => {
+  const q = query(collection(db, 'withdrawal_requests'), where('user_uuid', '==', userUUID));
+  return onSnapshot(q, (snapshot) => {
+    const withdrawals = snapshot.docs.map(doc => doc.data() as WithdrawalRequest);
+    callback(withdrawals);
   });
 };

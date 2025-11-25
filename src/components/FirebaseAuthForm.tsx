@@ -14,6 +14,9 @@ interface FirebaseAuthFormProps {
 const FirebaseAuthForm = ({ isLogin }: FirebaseAuthFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState(() => {
+    return localStorage.getItem('referralCode') || '';
+  });
   const [loading, setLoading] = useState(false);
   const { login, signup, loginWithGoogle } = useFirebaseUser();
   const navigate = useNavigate();
@@ -28,9 +31,13 @@ const FirebaseAuthForm = ({ isLogin }: FirebaseAuthFormProps) => {
         toast.success('Signed in successfully!');
         navigate('/dashboard');
       } else {
+        // Save referral code to localStorage before signup
+        if (referralCode.trim()) {
+          localStorage.setItem('referralCode', referralCode.trim().toUpperCase());
+        }
         await signup(email, password);
-        toast.success('Account created! Please sign in.');
-        navigate('/');
+        toast.success('Account created! Welcome to Santa\'s Pot! 🎅');
+        navigate('/dashboard');
       }
     } catch (error: any) {
       toast.error(error.message || 'Authentication failed');
@@ -79,6 +86,26 @@ const FirebaseAuthForm = ({ isLogin }: FirebaseAuthFormProps) => {
             disabled={loading}
           />
         </div>
+        {!isLogin && (
+          <div className="space-y-2">
+            <label htmlFor="referralCode" className="text-sm font-medium">
+              Referral Code (Optional)
+            </label>
+            <Input
+              id="referralCode"
+              type="text"
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+              placeholder="Enter 8-character code"
+              maxLength={8}
+              disabled={loading}
+              className="uppercase"
+            />
+            <p className="text-xs text-gray-500">
+              Have a referral code? Enter it to give your friend $50 bonus!
+            </p>
+          </div>
+        )}
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? (
             <>
