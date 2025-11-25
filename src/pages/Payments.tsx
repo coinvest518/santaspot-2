@@ -8,7 +8,7 @@ import { useFirebaseUser } from '@/hooks/useFirebaseUser';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, DollarSign } from 'lucide-react';
 import { PaymentForm } from '@/components/PaymentForm';
-import { createPaymentIntent } from './api/create-payment-intent';
+
 import { useToast } from "@/components/ui/use-toast";
 
 const Payments = () => {
@@ -27,7 +27,6 @@ const Payments = () => {
 
   const handleCreatePayment = async () => {
     const donationAmount = parseFloat(amount);
-    
     if (isNaN(donationAmount) || donationAmount < 1) {
       toast({
         title: "Invalid Amount",
@@ -38,15 +37,23 @@ const Payments = () => {
     }
 
     setIsCreatingPayment(true);
-    
     try {
-      const { clientSecret } = await createPaymentIntent(donationAmount, {
-        userId: firebaseUser?.uid || 'anonymous',
-        userEmail: firebaseUser?.email || 'unknown',
-        type: 'donation'
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: donationAmount,
+          currency: 'usd',
+          userId: firebaseUser?.uid || 'anonymous',
+          userEmail: firebaseUser?.email || 'unknown',
+          type: 'donation',
+        }),
       });
-      
-      setClientSecret(clientSecret);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to create payment intent');
+      setClientSecret(data.clientSecret);
       toast({
         title: "Payment Ready",
         description: "You can now complete your donation below.",
