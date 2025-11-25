@@ -226,13 +226,13 @@ const sampleOffers: Offer[] = [
   },
   {
     id: 'affiliate_ava',
-    title: 'Ava AI Assistant',
-    description: 'Advanced AI assistant for productivity and automation tasks.',
+    title: 'Ava Build Credit',
+    description: 'AVA is a credit Builder program that helps you build credit fast.',
     image_url: '/images/christmas-pot.png',
     reward: 14.00,
     category: 'affiliate',
     link: 'https://meetava.sjv.io/anDyvY',
-    requirements: ['Create account', 'Try AI assistant'],
+    requirements: ['Create account', 'Try credit builder'],
     estimated_time: '12 mins',
     is_active: true,
     created_at: new Date().toISOString()
@@ -252,7 +252,7 @@ const sampleOffers: Offer[] = [
   },
   {
     id: 'affiliate_amazon',
-    title: 'Amazon Products',
+    title: 'SNAP Benefits & Discounts for Amazon Products',
     description: 'Shop amazing deals on Amazon with exclusive discounts.',
     image_url: '/images/christmas-pot.png',
     reward: 5.00,

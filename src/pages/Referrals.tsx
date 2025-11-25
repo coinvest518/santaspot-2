@@ -102,8 +102,8 @@ const Referrals: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-b from-red-50 to-white">
-      <main className="flex-1 p-6 overflow-y-auto">
+    <div className="flex min-h-screen bg-gradient-to-b from-red-50 to-white">
+      <main className="flex-1 p-3 sm:p-6 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

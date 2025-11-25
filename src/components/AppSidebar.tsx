@@ -71,7 +71,7 @@ export function AppSidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md"
+        className="md:hidden fixed top-4 left-4 z-[60] p-2 bg-gray-800 text-white rounded-md shadow-lg"
       >
         {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
@@ -85,7 +85,7 @@ export function AppSidebar() {
       )}
 
       {/* Sidebar */}
-      <div className={`${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
         <Sidebar>
           <SidebarContent>
         {/* Main Navigation */}
@@ -96,6 +96,7 @@ export function AppSidebar() {
               <Link
                 key={item.title}
                 to={item.to}
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors"
               >
                 <item.icon className="w-4 h-4" />
@@ -114,6 +115,7 @@ export function AppSidebar() {
                 <Link
                   key={item.title}
                   to={item.to}
+                  onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors"
                 >
                   <item.icon className="w-4 h-4" />
@@ -133,6 +135,7 @@ export function AppSidebar() {
                 <Link
                   key={item.title}
                   to={item.to}
+                  onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors"
                 >
                   <item.icon className="w-4 h-4" />
@@ -152,6 +155,7 @@ export function AppSidebar() {
                 <Link
                   key={item.title}
                   to={item.to}
+                  onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors"
                 >
                   <item.icon className="w-4 h-4" />
@@ -165,7 +169,10 @@ export function AppSidebar() {
         {/* Sign Out Button */}
         <div className="mt-auto pt-4 border-t border-gray-700">
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              handleLogout();
+              setIsMobileMenuOpen(false);
+            }}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors w-full"
           >
             <LogOut className="w-4 h-4" />
