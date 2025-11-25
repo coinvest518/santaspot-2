@@ -207,56 +207,56 @@ const Dashboard = () => {
 
   return (
     <div className="flex-1 min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-10 w-full flex justify-between items-center p-4 bg-white border-b">
-        <div className="flex items-center space-x-4">
+      <header className="sticky top-0 z-10 w-full flex flex-col sm:flex-row justify-between items-center p-2 sm:p-4 bg-white border-b gap-2">
+        <div className="flex items-center">
           <Card className="bg-gradient-to-r from-green-400 to-blue-500 text-white">
-            <div className="px-6 py-4">
-              <div className="text-sm font-semibold opacity-90">Current Pot Total</div>
-              <div className="text-2xl font-bold">${potTotal.toFixed(2)}</div>
+            <div className="px-3 py-2 sm:px-6 sm:py-4">
+              <div className="text-xs sm:text-sm font-semibold opacity-90">Current Pot Total</div>
+              <div className="text-lg sm:text-2xl font-bold">${potTotal.toFixed(2)}</div>
             </div>
           </Card>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Button>
+        <div className="flex items-center">
+          <Button className="text-xs sm:text-sm px-2 sm:px-4">
             {dashboardData.username ? `Welcome, ${dashboardData.username}!` : 'Welcome!'}
           </Button>
         </div>
       </header>
 
-      <main className="p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+      <main className="p-3 sm:p-6">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
 
-          <Card className="bg-primary text-black p-6 mb-8">
+          <Card className="bg-primary text-black p-4 sm:p-6 mb-4 sm:mb-8">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Total Earnings</h2>
-              <span className="text-3xl font-bold">${dashboardData.earnings.toFixed(2)}</span>
+              <h2 className="text-lg sm:text-xl font-semibold">Total Earnings</h2>
+              <span className="text-2xl sm:text-3xl font-bold">${dashboardData.earnings.toFixed(2)}</span>
             </div>
           </Card>
 
-          <Card className="p-6 bg-white shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Your Stats</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card className="p-4 sm:p-6 bg-white shadow-lg">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Your Stats</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
               <div className="text-center">
-                <p className="text-sm text-gray-500">Total Clicks</p>
-                <p className="text-2xl font-bold text-primary">{dashboardData.referral_clicks}</p>
+                <p className="text-xs sm:text-sm text-gray-500">Total Clicks</p>
+                <p className="text-lg sm:text-2xl font-bold text-primary">{dashboardData.referral_clicks}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-500">Total Referrals</p>
-                <p className="text-2xl font-bold text-primary">{dashboardData.referrals}</p>
+                <p className="text-xs sm:text-sm text-gray-500">Total Referrals</p>
+                <p className="text-lg sm:text-2xl font-bold text-primary">{dashboardData.referrals}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-500">Social Shares</p>
-                <p className="text-2xl font-bold text-primary">{dashboardData.social_shares}</p>
+                <p className="text-xs sm:text-sm text-gray-500">Social Shares</p>
+                <p className="text-lg sm:text-2xl font-bold text-primary">{dashboardData.social_shares}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-500">Total Donated</p>
-                <p className="text-2xl font-bold text-primary">${dashboardData.total_donated.toFixed(2)}</p>
+                <p className="text-xs sm:text-sm text-gray-500">Total Donated</p>
+                <p className="text-lg sm:text-2xl font-bold text-primary">${dashboardData.total_donated.toFixed(2)}</p>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-500">Influence Score</p>
-                <p className="text-2xl font-bold text-primary">{dashboardData.influence_score}</p>
+                <p className="text-xs sm:text-sm text-gray-500">Influence Score</p>
+                <p className="text-lg sm:text-2xl font-bold text-primary">{dashboardData.influence_score}</p>
               </div>
             </div>
           </Card>
@@ -298,28 +298,30 @@ const Dashboard = () => {
               <div className="mt-4">
                 <h3 className="text-lg font-semibold mb-4">Your Donations</h3>
                 {donations.length > 0 ? (
-                  <table className="min-w-full bg-white">
-                    <thead>
-                      <tr>
-                        <th className="py-2 px-4 border-b">Amount</th>
-                        <th className="py-2 px-4 border-b">Currency</th>
-                        <th className="py-2 px-4 border-b">Network</th>
-                        <th className="py-2 px-4 border-b">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {donations.map((donation) => (
-                        <tr key={donation.id}>
-                          <td className="py-2 px-4 border-b">${donation.amount}</td>
-                          <td className="py-2 px-4 border-b">{donation.currency}</td>
-                          <td className="py-2 px-4 border-b">{donation.network}</td>
-                          <td className="py-2 px-4 border-b">
-                            {donation.created_at.toDate().toLocaleDateString()}
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white text-sm">
+                      <thead>
+                        <tr>
+                          <th className="py-2 px-2 sm:px-4 border-b text-left">Amount</th>
+                          <th className="py-2 px-2 sm:px-4 border-b text-left hidden sm:table-cell">Currency</th>
+                          <th className="py-2 px-2 sm:px-4 border-b text-left hidden sm:table-cell">Network</th>
+                          <th className="py-2 px-2 sm:px-4 border-b text-left">Date</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {donations.map((donation) => (
+                          <tr key={donation.id}>
+                            <td className="py-2 px-2 sm:px-4 border-b font-medium">${donation.amount}</td>
+                            <td className="py-2 px-2 sm:px-4 border-b hidden sm:table-cell">{donation.currency}</td>
+                            <td className="py-2 px-2 sm:px-4 border-b hidden sm:table-cell">{donation.network}</td>
+                            <td className="py-2 px-2 sm:px-4 border-b">
+                              {donation.created_at.toDate().toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <p className="text-gray-500">No donations yet</p>
                 )}
@@ -381,7 +383,7 @@ const Dashboard = () => {
             <p className="text-sm text-gray-600 mb-4">
               Share your referral link and earn $2 per click + $50 per signup!
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               <Button 
                 onClick={shareOnFacebook}
                 className="bg-[#1877F2] hover:bg-[#1877F2]/90"
@@ -413,7 +415,7 @@ const Dashboard = () => {
               <Button 
                 onClick={copyShareMessage}
                 variant="outline"
-                className="md:col-span-2"
+                className="sm:col-span-2 md:col-span-2"
               >
                 <Copy className="w-4 h-4 mr-2" />
                 Copy Share Message

@@ -1,9 +1,10 @@
 // components/AppSidebar.tsx
 import { Link } from "react-router-dom"
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar"
-import { Users, Gift, UserCircle, Receipt, PiggyBank, Home, CreditCard, Ticket, LogOut } from "lucide-react"
+import { Users, Gift, UserCircle, Receipt, PiggyBank, Home, CreditCard, Ticket, LogOut, Menu, X } from "lucide-react"
 import { useFirebaseUser } from "@/hooks/useFirebaseUser"
 import { useNavigate } from "react-router-dom"
+import { useState } from "react"
 
 // Navigation items grouped by category
 const mainItems = [
@@ -54,6 +55,7 @@ const accountItems = [
 export function AppSidebar() {
   const { logout } = useFirebaseUser()
   const navigate = useNavigate()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -63,9 +65,29 @@ export function AppSidebar() {
       console.error("Logout failed:", error)
     }
   }
+  
   return (
-    <Sidebar>
-      <SidebarContent>
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-md"
+      >
+        {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out`}>
+        <Sidebar>
+          <SidebarContent>
         {/* Main Navigation */}
         <div className="space-y-6">
           {/* Dashboard Section */}
@@ -152,5 +174,7 @@ export function AppSidebar() {
         </div>
       </SidebarContent>
     </Sidebar>
+      </div>
+    </>
   )
 }

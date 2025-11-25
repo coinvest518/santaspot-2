@@ -32,8 +32,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, requireAuth = true }) 
       <main 
         className={cn(
           "flex-1 transition-all duration-300",
-          state === "expanded" ? "ml-64" : "ml-16",
-          "p-6"
+          "pt-16 md:pt-0", // Add top padding on mobile for menu button
+          "md:ml-64 lg:ml-16",
+          state === "expanded" ? "xl:ml-64" : "xl:ml-16",
+          "p-3 md:p-6"
         )}
       >
         {children}

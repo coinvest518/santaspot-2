@@ -147,9 +147,9 @@ const Withdraw: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold mb-6">💰 Withdraw Funds</h1>
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">💰 Withdraw Funds</h1>
         
         {/* Eligibility Status */}
         {userProfile && (
@@ -179,14 +179,14 @@ const Withdraw: React.FC = () => {
 
         {/* Stats Cards */}
         {userProfile && (
-          <div className="grid md:grid-cols-6 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center space-x-2">
-                  <DollarSign className="w-5 h-5 text-green-500" />
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
                   <div>
-                    <p className="text-sm text-gray-600">Earnings</p>
-                    <p className="text-xl font-bold">${userProfile.earnings.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Earnings</p>
+                    <p className="text-lg sm:text-xl font-bold">${userProfile.earnings.toFixed(2)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -249,7 +249,7 @@ const Withdraw: React.FC = () => {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Requirements Progress */}
           <Card>
             <CardHeader>

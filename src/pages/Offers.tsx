@@ -373,11 +373,11 @@ const Offers: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
-      <main className="flex-1 p-6 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
+      <main className="flex-1 p-3 sm:p-6 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-6">Offer Wall</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Offer Wall</h1>
             {userProfile && (
               <StatsCards stats={{
                 total_earned: userProfile.earnings || 0,
@@ -394,7 +394,7 @@ const Offers: React.FC = () => {
             activeCategory={activeCategory}
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <Card className="bg-gradient-to-r from-blue-500 to-blue-600">
               <CardHeader>
                 <CardTitle className="flex items-center text-white">
@@ -429,7 +429,7 @@ const Offers: React.FC = () => {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredOffers.map((offer, index) => (
               <motion.div
                 key={offer.id}
