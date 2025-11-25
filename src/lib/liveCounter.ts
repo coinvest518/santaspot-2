@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { db } from './firebase';
+import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 
 export interface LiveStats {
   total_users: number;
@@ -7,41 +8,31 @@ export interface LiveStats {
 }
 
 export const fetchLiveStats = async (): Promise<LiveStats> => {
-  console.log('Fetching live stats');
-  const { data, error } = await supabase
-    .from('live_stats')
-    .select('*')
-    .single();
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const clicksSnap = await getDocs(collection(db, 'clicks'));
+    
+    let totalEarnings = 0;
+    usersSnap.forEach(doc => {
+      totalEarnings += doc.data().earnings || 0;
+    });
 
-  if (error) {
+    return {
+      total_users: usersSnap.size,
+      total_earnings: totalEarnings,
+      total_clicks: clicksSnap.size,
+    };
+  } catch (error) {
     console.error('Error fetching live stats:', error);
     throw error;
   }
-
-  return data;
 };
 
-// Subscribe to live stats updates
 export const subscribeLiveStats = (callback: (stats: LiveStats) => void) => {
-  console.log('Subscribing to live stats');
-  const channel = supabase
-    .channel('live_stats_changes')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'live_stats'
-      },
-      (payload) => {
-        console.log('Live stats update received:', payload);
-        callback(payload.new as LiveStats);
-      }
-    )
-    .subscribe();
+  const unsubscribe = onSnapshot(collection(db, 'users'), async () => {
+    const stats = await fetchLiveStats();
+    callback(stats);
+  });
 
-  return () => {
-    console.log('Unsubscribing from live stats');
-    supabase.removeChannel(channel);
-  };
+  return unsubscribe;
 };

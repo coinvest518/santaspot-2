@@ -4,7 +4,10 @@ import { FaEthereum, FaWallet } from 'react-icons/fa';
 import { SiPolygon } from 'react-icons/si';
 import { RiExchangeLine } from 'react-icons/ri';
 import { useToast } from "@/hooks/use-toast";
-import { recordDonation } from '../lib/donations'; // Import the donation tracking function
+import { recordDonation } from '../lib/firebase';
+import TOKENS, { TokenInfo } from '@/config/tokens';
+import RECEIVERS from '@/config/receivers';
+import { useFirebaseUser } from '@/hooks/useFirebaseUser';
 
 interface PaymentOption {
   amount: string;
@@ -30,7 +33,7 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
   }
 ];
 
-const RECEIVER_WALLET = "YOUR_WALLET_ADDRESS_HERE"; // Replace with your wallet address
+const RECEIVER_WALLET = import.meta.env.REACT_APP_WALLET_ADDRESS || "YOUR_WALLET_ADDRESS_HERE"; // Fallback for development
 
 // Network configurations
 const NETWORKS = {
@@ -42,7 +45,7 @@ const NETWORKS = {
       symbol: 'ETH',
       decimals: 18
     },
-    rpcUrls: ['https://mainnet.infura.io/v3/YOUR_INFURA_KEY'],
+    rpcUrls: [`https://mainnet.infura.io/v3/${import.meta.env.VITE_INFURA_PROJECT_ID}`],
     blockExplorerUrls: ['https://etherscan.io']
   },
   polygon: {
@@ -53,17 +56,52 @@ const NETWORKS = {
       symbol: 'MATIC',
       decimals: 18
     },
-    rpcUrls: ['https://polygon-rpc.com'],
+    rpcUrls: [`https://polygon-mainnet.infura.io/v3/${import.meta.env.VITE_INFURA_PROJECT_ID}`],
     blockExplorerUrls: ['https://polygonscan.com/']
+  },
+  base: {
+    chainId: '0x2105',
+    chainName: 'Base',
+    nativeCurrency: {
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18
+    },
+    rpcUrls: [`https://base-mainnet.infura.io/v3/${import.meta.env.VITE_INFURA_PROJECT_ID}`],
+    blockExplorerUrls: ['https://basescan.org']
+  },
+  bnb: {
+    chainId: '0x38',
+    chainName: 'BNB Smart Chain',
+    nativeCurrency: {
+      name: 'BNB',
+      symbol: 'BNB',
+      decimals: 18
+    },
+    rpcUrls: ['https://bsc-dataseed1.binance.org/'],
+    blockExplorerUrls: ['https://bscscan.com']
+  },
+  mumbai: {
+    chainId: '0x13881',
+    chainName: 'Polygon Mumbai',
+    nativeCurrency: {
+      name: 'MATIC',
+      symbol: 'MATIC',
+      decimals: 18
+    },
+    rpcUrls: [`https://polygon-mumbai.infura.io/v3/${import.meta.env.VITE_INFURA_PROJECT_ID}`],
+    blockExplorerUrls: ['https://mumbai.polygonscan.com/']
   },
 };
 
 const CryptoPaymentPage = () => {
   const { toast } = useToast();
+  const { userProfile } = useFirebaseUser();
   const [account, setAccount] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState<string>('');
   const [customAmount, setCustomAmount] = useState<string>('');
+  const [selectedToken, setSelectedToken] = useState<TokenInfo | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedNetwork, setSelectedNetwork] = useState('ethereum');
   const [gasEstimate, setGasEstimate] = useState<{
@@ -73,10 +111,47 @@ const CryptoPaymentPage = () => {
     networkFee: string;
   } | null>(null);
   const [balance, setBalance] = useState<string>('0');
+  const [tokenBalance, setTokenBalance] = useState<string>('0');
+  const [isDisconnected, setIsDisconnected] = useState(false);
+
+  const getReceiver = (networkName: string) => {
+    return (RECEIVERS as Record<string, string>)[networkName] || RECEIVER_WALLET;
+  };
 
   useEffect(() => {
-    checkIfWalletIsConnected();
-  }, [account, selectedNetwork]);
+    if (!isDisconnected) {
+      checkIfWalletIsConnected();
+    }
+  }, [selectedNetwork, isDisconnected]);
+
+  // fetch selected token balance
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      try {
+        const { ethereum } = window as any;
+        if (!ethereum || !account || !selectedToken) return;
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        if (selectedToken.isNative) {
+          const bal = await provider.getBalance(account);
+          setTokenBalance(ethers.utils.formatUnits(bal, 18));
+        } else if (selectedToken.address) {
+          const erc20Abi = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'];
+          const tokenContract = new ethers.Contract(selectedToken.address, erc20Abi, provider);
+          const bal = await tokenContract.balanceOf(account);
+          setTokenBalance(ethers.utils.formatUnits(bal, selectedToken.decimals));
+        }
+      } catch (err) {
+        console.error('Error fetching token balance', err);
+      }
+    };
+    fetchTokenBalance();
+  }, [account, selectedToken]);
+
+  useEffect(() => {
+    // default selected token for network
+    const list = TOKENS[selectedNetwork] || [];
+    setSelectedToken(list[0] || null);
+  }, [selectedNetwork]);
 
   const checkIfWalletIsConnected = async () => {
     try {
@@ -105,6 +180,7 @@ const CryptoPaymentPage = () => {
   const connectWallet = async () => {
     try {
       setIsConnecting(true);
+      setIsDisconnected(false);
       const { ethereum } = window as any;
       if (!ethereum) {
         toast({
@@ -115,27 +191,44 @@ const CryptoPaymentPage = () => {
         return;
       }
 
-      const accounts = await ethereum.request({
-        method: 'eth_requestAccounts',
-      });
-      setAccount(accounts[0]);
-      toast({
-        title: "Wallet Connected",
-        description: "Your wallet has been successfully connected!",
-      });
-      const provider = new ethers.providers.Web3Provider(ethereum);
-      const balance = await provider.getBalance(accounts[0]);
-      setBalance(ethers.utils.formatEther(balance));
-    } catch (error) {
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const balance = await provider.getBalance(accounts[0]);
+        setBalance(ethers.utils.formatEther(balance));
+        toast({
+          title: "Wallet Connected",
+          description: "Your wallet has been successfully connected.",
+        });
+      }
+    } catch (error: any) {
       console.error(error);
       toast({
         title: "Connection Failed",
-        description: "Failed to connect wallet. Please try again.",
+        description: error.message || "Failed to connect wallet",
         variant: "destructive",
       });
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const disconnectWallet = () => {
+    setIsDisconnected(true);
+    setAccount('');
+    setBalance('0');
+    setTokenBalance('0');
+    setSelectedToken(null);
+    setGasEstimate(null);
+    setSelectedAmount('');
+    setCustomAmount('');
+    setIsProcessing(false);
+    setIsConnecting(false);
+    toast({
+      title: "Wallet Disconnected",
+      description: "Your wallet has been disconnected. You can reconnect anytime.",
+    });
   };
 
   const switchNetwork = async (networkName: string) => {
@@ -181,11 +274,22 @@ const CryptoPaymentPage = () => {
       const amountInWei = ethers.utils.parseEther(amount);
 
       const gasPrice = await provider.getGasPrice();
-      const gasLimit = await provider.estimateGas({
-        to: RECEIVER_WALLET,
-        value: amountInWei,
-        from: account
-      });
+      let gasLimit;
+      // If ERC20 token selected, estimate gas against token contract transfer
+      if (selectedToken && !selectedToken.isNative && selectedToken.address) {
+        const erc20Abi = [
+          'function transfer(address to, uint256 amount) returns (bool)'
+        ];
+        const contract = new ethers.Contract(selectedToken.address, erc20Abi, provider);
+        const data = contract.interface.encodeFunctionData('transfer', [getReceiver(selectedNetwork), amountInWei]);
+        gasLimit = await provider.estimateGas({ to: selectedToken.address, data, from: account });
+      } else {
+        gasLimit = await provider.estimateGas({
+          to: RECEIVER_WALLET,
+          value: amountInWei,
+          from: account
+        });
+      }
 
       const networkFee = gasPrice.mul(gasLimit);
       const totalCost = amountInWei.add(networkFee);
@@ -211,50 +315,65 @@ const CryptoPaymentPage = () => {
         throw new Error("Please connect your wallet first");
       }
 
-      const amountInWei = ethers.utils.parseEther(amount);
-      const userBalance = ethers.utils.parseEther(balance);
-      
-      if (userBalance.lt(amountInWei)) {
-        throw new Error(`Insufficient balance. You need at least ${amount} ${
-          selectedNetwork === 'polygon' ? 'MATIC' : 'ETH'
-        }`);
-      }
-
       setIsProcessing(true);
       const { ethereum } = window as any;
-      
+      if (!ethereum) throw new Error('Wallet not available');
+
       const provider = new ethers.providers.Web3Provider(ethereum);
       const signer = provider.getSigner();
 
-      await estimateGasForTransaction(amount);
-      
-      if (!gasEstimate) {
-        throw new Error("Failed to estimate gas");
+      // Parse amount according to token decimals
+      let amountInUnits;
+      let currencySymbol = selectedToken?.symbol || (selectedNetwork === 'polygon' ? 'MATIC' : 'ETH');
+
+      if (selectedToken && !selectedToken.isNative) {
+        // ERC-20: convert based on token decimals
+        amountInUnits = ethers.utils.parseUnits(amount, selectedToken.decimals);
+      } else {
+        amountInUnits = ethers.utils.parseEther(amount);
       }
 
-      const tx = await signer.sendTransaction({
-        to: RECEIVER_WALLET,
-        value: amountInWei,
-        gasLimit: gasEstimate.gasLimit
-      });
+      // Check native balance to ensure gas coverage
+      const nativeBal = await provider.getBalance(account);
+      const minGasCheck = ethers.utils.parseEther('0.001'); // lightweight check
+      if (nativeBal.lt(minGasCheck)) {
+        throw new Error('Insufficient native balance to pay gas (need small amount of MATIC/ETH)');
+      }
 
-      toast({
-        title: "Transaction Sent",
-        description: "Please wait for confirmation...",
-      });
+      // Execute correct flow
+      let tx;
+      if (selectedToken && !selectedToken.isNative && selectedToken.address) {
+        // ERC-20 direct transfer
+        const erc20Abi = [
+          'function transfer(address to, uint256 amount) returns (bool)',
+          'function balanceOf(address) view returns (uint256)'
+        ];
+        const tokenContract = new ethers.Contract(selectedToken.address, erc20Abi, signer);
+        // estimate gas for token transfer (optional)
+        try {
+            const gasEst = await tokenContract.estimateGas.transfer(getReceiver(selectedNetwork), amountInUnits);
+          // send
+          tx = await tokenContract.transfer(getReceiver(selectedNetwork), amountInUnits, { gasLimit: gasEst.mul(110).div(100) });
+        } catch (err) {
+          // fallback send without manual gas
+          tx = await tokenContract.transfer(getReceiver(selectedNetwork), amountInUnits);
+        }
+      } else {
+        // Native transfer
+        const amountInWei = amountInUnits;
+        await estimateGasForTransaction(amount);
+        if (!gasEstimate) throw new Error('Failed to estimate gas');
+        tx = await signer.sendTransaction({ to: getReceiver(selectedNetwork), value: amountInWei, gasLimit: gasEstimate.gasLimit });
+      }
 
+      toast({ title: 'Transaction Sent', description: 'Please wait for confirmation...' });
       await tx.wait();
 
-      // Record the donation in Supabase
-      await recordDonation(account, parseFloat(amount), selectedNetwork === 'ethereum' ? 'ETH' : 'MATIC', selectedNetwork);
+      if (userProfile?.uuid) {
+        await recordDonation(userProfile.uuid, parseFloat(amount), currencySymbol, selectedNetwork, tx.hash);
+      }
 
-      toast({
-        title: "Payment Successful!",
-        description: `Successfully sent ${amount} ${
-          selectedNetwork === 'polygon' ? 'MATIC' : 'ETH'
-        }`,
-      });
-
+      toast({ title: 'Payment Successful!', description: `Successfully sent ${amount} ${currencySymbol}` });
       setSelectedAmount('');
       setCustomAmount('');
     } catch (error: any) {
@@ -281,31 +400,24 @@ const CryptoPaymentPage = () => {
         </div>
 
         {/* Network Selection */}
-        <div className="flex justify-center mb-8 space-x-4">
-          <button
-            onClick={() => switchNetwork('ethereum')}
-            disabled={isProcessing}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg ${
-              selectedNetwork === 'ethereum' 
-                ? 'bg-blue-600' 
-                : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-          >
-            <FaEthereum className="text-xl" />
-            <span>Ethereum Network</span>
-          </button>
-          <button
-            onClick={() => switchNetwork('polygon')}
-            disabled={isProcessing}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg ${
-              selectedNetwork === 'polygon' 
-                ? 'bg-purple-600' 
-                : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-          >
-            <SiPolygon className="text-xl" />
-            <span>Polygon Network</span>
-          </button>
+        <div className="flex justify-center mb-8 space-x-4 flex-wrap">
+          {Object.keys(NETWORKS).map((networkKey) => {
+            const network = NETWORKS[networkKey];
+            return (
+              <button
+                key={networkKey}
+                onClick={() => switchNetwork(networkKey)}
+                disabled={isProcessing}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedNetwork === networkKey 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                }`}
+              >
+                <span>{network.chainName}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Wallet Connection */}
@@ -314,61 +426,104 @@ const CryptoPaymentPage = () => {
             <button
               onClick={connectWallet}
               disabled={isConnecting}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 
-                       px-6 py-3 rounded-lg font-semibold transition-colors"
+              className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 
+                       px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               <FaWallet className="text-xl" />
               <span>{isConnecting ? 'Connecting...' : 'Connect Wallet'}</span>
             </button>
           ) : (
-            <div className="flex items-center space-x-2 bg-gray-800 px-6 py-3 rounded-lg">
-              <FaWallet className="text-xl text-green-500" />
-              <span>
-                {`${account.substring(0, 6)}...${account.substring(
-                  account.length - 4
-                )}`}
-              </span>
-            </div>
+            <button
+              onClick={disconnectWallet}
+              className="flex items-center space-x-4 bg-gray-800 px-6 py-4 rounded-xl shadow-lg hover:bg-gray-700 transition-colors cursor-pointer"
+            >
+              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                <FaWallet className="text-white text-lg" />
+              </div>
+              <div className="text-left">
+                <div className="text-green-400 font-semibold">Connected</div>
+                <div className="text-gray-300 text-sm">
+                  {`${account.substring(0, 6)}...${account.substring(account.length - 4)}`}
+                </div>
+                <div className="text-gray-400 text-xs mt-1">Click to disconnect</div>
+              </div>
+            </button>
           )}
         </div>
 
         {/* Wallet Status */}
         {account && (
-          <div className="text-center mb-8">
-            <div className="flex justify-center items-center space-x-2 mb-2">
-              <FaWallet className="text-xl" />
-              <span>{account ? `Connected: ${account.substring(0, 6)}...${account.substring(account.length - 4)}` : 'Not Connected'}</span>
+          <div className="bg-gray-800 rounded-xl p-6 mb-8 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4 text-center">Wallet Status</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Network:</span>
+                <span className="font-medium">{NETWORKS[selectedNetwork]?.chainName || selectedNetwork}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Address:</span>
+                <span className="font-mono text-sm bg-gray-700 px-2 py-1 rounded">
+                  {`${account.substring(0, 6)}...${account.substring(account.length - 4)}`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Native Balance:</span>
+                <span className="font-medium">{parseFloat(balance).toFixed(4)} {NETWORKS[selectedNetwork]?.nativeCurrency.symbol}</span>
+              </div>
+              {selectedToken && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">{selectedToken.symbol} Balance:</span>
+                  <span className="font-medium">{parseFloat(tokenBalance || '0').toFixed(6)}</span>
+                </div>
+              )}
             </div>
-            <div className="text-sm text-gray-400">
-              Balance: {parseFloat(balance).toFixed(4)} {selectedNetwork === 'ethereum' ? 'ETH' : 'MATIC'}
+          </div>
+        )}
+
+        {/* Token selection dropdown */}
+        {account && (
+          <div className="flex justify-center mb-6">
+            <div className="bg-gray-800 rounded-xl p-4 shadow-lg">
+              <label className="block text-sm font-medium text-gray-400 mb-2">Select Token</label>
+              <select
+                value={selectedToken?.symbol}
+                onChange={(e) => {
+                  const list = TOKENS[selectedNetwork] || [];
+                  const token = list.find(t => t.symbol === e.target.value) || null;
+                  setSelectedToken(token);
+                }}
+                className="bg-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+              >
+                {(TOKENS[selectedNetwork] || []).map((t) => (
+                  <option key={t.symbol} value={t.symbol}>
+                    {t.symbol} {t.isNative ? '(Native)' : ''} - {t.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}
 
         {/* Payment Options */}
-        {account && (
+        {account && selectedToken && (
           <div className="grid md:grid-cols-3 gap-8 mb-12">
             {PAYMENT_OPTIONS.map((option, index) => (
               <div
                 key={index}
-                className={`bg-gray-800 rounded-xl p-6 cursor-pointer transition-transform 
-                          hover:transform hover:scale-105 border-2 
-                          ${
-                            selectedAmount === option.amount
-                              ? 'border-blue-500'
-                              : 'border-transparent'
-                          }`}
+                className={`bg-gray-800 rounded-xl p-6 cursor-pointer transition-all duration-200 hover:transform hover:scale-105 border-2 shadow-lg ${
+                  selectedAmount === option.amount
+                    ? 'border-blue-500 bg-gray-700'
+                    : 'border-transparent hover:border-gray-600'
+                }`}
                 onClick={() => setSelectedAmount(option.amount)}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
-                    {selectedNetwork === 'ethereum' ? (
-                      <FaEthereum className="text-2xl text-blue-500" />
-                    ) : (
-                      <SiPolygon className="text-2xl text-purple-500" />
-                    )}
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">{selectedToken.symbol.charAt(0)}</span>
+                    </div>
                     <span className="text-2xl font-bold">
-                      {option.amount} {selectedNetwork === 'ethereum' ? 'ETH' : 'MATIC'}
+                      {option.amount} {selectedToken.symbol}
                     </span>
                   </div>
                 </div>
@@ -380,48 +535,51 @@ const CryptoPaymentPage = () => {
         )}
 
         {/* Gas Estimation Display */}
-        {gasEstimate && (
-          <div className="bg-gray-800 rounded-lg p-4 mb-8 max-w-md mx-auto">
-            <h3 className="text-lg font-semibold mb-2">Transaction Details</h3>
-            <div className="space-y-2 text-sm">
+        {gasEstimate && selectedToken && (
+          <div className="bg-gray-800 rounded-xl p-6 mb-8 max-w-md mx-auto shadow-lg">
+            <h3 className="text-lg font-semibold mb-4 text-center">Transaction Details</h3>
+            <div className="space-y-3">
               <div className="flex justify-between">
-                <span>Gas Price:</span>
-                <span>{parseFloat(gasEstimate.gasPriceGwei).toFixed(2)} Gwei</span>
+                <span className="text-gray-400">Gas Price:</span>
+                <span className="font-medium">{parseFloat(gasEstimate.gasPriceGwei).toFixed(2)} Gwei</span>
               </div>
               <div className="flex justify-between">
-                <span>Estimated Gas Limit:</span>
-                <span>{gasEstimate.gasLimit}</span>
+                <span className="text-gray-400">Estimated Gas Limit:</span>
+                <span className="font-medium">{gasEstimate.gasLimit}</span>
               </div>
               <div className="flex justify-between">
-                <span>Network Fee:</span>
-                <span>{parseFloat(gasEstimate.networkFee).toFixed(6)} {selectedNetwork === 'ethereum' ? 'ETH' : 'MATIC'}</span>
+                <span className="text-gray-400">Network Fee:</span>
+                <span className="font-medium">{parseFloat(gasEstimate.networkFee).toFixed(6)} {NETWORKS[selectedNetwork]?.nativeCurrency.symbol}</span>
               </div>
-              <div className="flex justify-between font-semibold border-t border-gray-700 pt-2 mt-2">
+              <div className="flex justify-between font-semibold border-t border-gray-700 pt-3 mt-3">
                 <span>Total Cost:</span>
-                <span>{parseFloat(gasEstimate.totalCost).toFixed(6)} {selectedNetwork === 'ethereum' ? 'ETH' : 'MATIC'}</span>
+                <span>{parseFloat(gasEstimate.totalCost).toFixed(6)} {NETWORKS[selectedNetwork]?.nativeCurrency.symbol}</span>
+              </div>
+              <div className="text-sm text-gray-400 text-center mt-2">
+                Gas is paid in {NETWORKS[selectedNetwork]?.nativeCurrency.symbol} even for {selectedToken.symbol} transfers
               </div>
             </div>
           </div>
         )}
 
         {/* Custom Amount */}
-        {account && (
-          <div className="max-w-md mx-auto bg-gray-800 rounded-xl p-6 mb-12">
+        {account && selectedToken && (
+          <div className="max-w-md mx-auto bg-gray-800 rounded-xl p-6 mb-12 shadow-lg">
             <h3 className="text-xl font-semibold mb-4">Custom Amount</h3>
             <div className="flex space-x-4">
               <input
                 type="number"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
-                placeholder={`Enter ${selectedNetwork === 'ethereum' ? 'ETH' : 'MATIC'} amount`}
+                placeholder={`Enter ${selectedToken.symbol} amount`}
                 className="flex-1 bg-gray-700 rounded-lg px-4 py-2 focus:outline-none 
                          focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={() => handlePayment(customAmount)}
                 disabled={!customAmount || isProcessing}
-                className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg 
-                         font-semibold transition-colors disabled:opacity-50"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 
+                         px-6 py-2 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 shadow-lg"
               >
                 {isProcessing ? 'Processing...' : 'Send'}
               </button>
@@ -430,20 +588,20 @@ const CryptoPaymentPage = () => {
         )}
 
         {/* Selected Amount Payment Button */}
-        {account && selectedAmount && (
+        {account && selectedAmount && selectedToken && (
           <div className="text-center">
             <button
               onClick={() => handlePayment(selectedAmount)}
               disabled={isProcessing}
-              className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-lg 
-                       font-semibold text-xl transition-colors disabled:opacity-50"
+              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 
+                       px-8 py-4 rounded-xl font-semibold text-xl transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl"
             >
               {isProcessing ? (
                 'Processing...'
               ) : (
                 <span className="flex items-center space-x-2">
                   <RiExchangeLine className="text-2xl" />
-                  <span>{`Pay ${selectedAmount} ${selectedNetwork === 'ethereum' ? 'ETH' : 'MATIC'}`}</span>
+                  <span>{`Pay ${selectedAmount} ${selectedToken.symbol}`}</span>
                 </span>
               )}
             </button>

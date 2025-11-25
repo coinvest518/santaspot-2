@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PaymentForm } from '../components/PaymentForm';
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createPaymentIntent } from './api/create-payment-intent';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { useUser } from '@/lib/useUser';
+import { useFirebaseUser } from '@/hooks/useFirebaseUser';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
@@ -17,31 +17,26 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 });
 
 const Payments = () => {
-  const { toast } = useToast();
-  const { user, loading } = useUser(); // Access user and loading state
+  const { firebaseUser, loading } = useFirebaseUser();
   const navigate = useNavigate();
   const [clientSecret, setClientSecret] = useState<string>("");
   const [amount, setAmount] = useState<number>(10);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !firebaseUser) {
       navigate('/');
     }
-  }, [user, loading, navigate]);
+  }, [firebaseUser, loading, navigate]);
 
   const handlePaymentInitialization = async () => {
-    if (!user) return; // Ensure user is logged in
+    if (!firebaseUser) return;
 
     try {
       const { clientSecret } = await createPaymentIntent(amount);
       setClientSecret(clientSecret);
     } catch (err) {
       console.error('Payment initialization error:', err);
-      toast({
-        title: "Error",
-        description: "Failed to initialize payment",
-        variant: "destructive",
-      });
+      toast.error("Failed to initialize payment");
     }
   };
 
@@ -53,8 +48,8 @@ const Payments = () => {
     );
   }
 
-  if (!user) {
-    return null; // This will prevent any flickering as navigate is called in useEffect
+  if (!firebaseUser) {
+    return null;
   }
 
   return (

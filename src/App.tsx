@@ -1,7 +1,7 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { UserProvider } from './context/UserProvider';
+import { FirebaseUserProvider } from './context/FirebaseUserProvider';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Layout } from './components/Layout';
 import { Toaster } from "sonner";
@@ -30,7 +30,7 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <UserProvider>
+    <FirebaseUserProvider>
       <SidebarProvider defaultOpen={true}>
         <TooltipProvider>
           <BrowserRouter>
@@ -109,7 +109,7 @@ const App = () => (
       <Analytics />
 
     </SidebarProvider>
-  </UserProvider>
+  </FirebaseUserProvider>
   </QueryClientProvider >
 );
 

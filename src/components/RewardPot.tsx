@@ -18,37 +18,39 @@ const GiftScene = ({ isOpening }: { isOpening: boolean }) => (
     className="relative w-64 h-64"
     animate={{
       scale: [1, 1.05, 1],
-      rotateY: [0, 360],
     }}
     transition={{
-      duration: 3,
+      duration: 2,
       repeat: Infinity,
       ease: "easeInOut",
     }}
+    style={{ willChange: 'transform' }}
   >
     <img
       src={christmasPot}
       alt="Christmas Pot"
       className="w-full h-full object-contain drop-shadow-2xl"
+      loading="eager"
     />
     
-    {/* Sparkles */}
-    {[...Array(6)].map((_, i) => (
+    {/* Reduced sparkles */}
+    {[...Array(3)].map((_, i) => (
       <motion.div
         key={i}
         className="absolute w-2 h-2 bg-yellow-300 rounded-full"
         style={{
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
+          top: `${25 + i * 25}%`,
+          left: `${25 + i * 25}%`,
+          willChange: 'transform, opacity'
         }}
         animate={{
           scale: [0, 1, 0],
           opacity: [0, 1, 0],
         }}
         transition={{
-          duration: 2,
+          duration: 1.5,
           repeat: Infinity,
-          delay: i * 0.2,
+          delay: i * 0.3,
           ease: "easeInOut",
         }}
       />
@@ -56,10 +58,11 @@ const GiftScene = ({ isOpening }: { isOpening: boolean }) => (
 
     {/* Glow effect */}
     <div 
-      className="absolute inset-0 blur-xl opacity-30"
+      className="absolute inset-0 blur-xl opacity-20"
       style={{
         background: 'radial-gradient(circle at center, #ffd700 0%, transparent 70%)',
-        zIndex: -1
+        zIndex: -1,
+        pointerEvents: 'none'
       }}
     />
   </motion.div>

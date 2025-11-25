@@ -1,7 +1,9 @@
 // components/AppSidebar.tsx
 import { Link } from "react-router-dom"
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar"
-import { Users, Gift, UserCircle, Receipt, PiggyBank, Home, CreditCard, Ticket } from "lucide-react"
+import { Users, Gift, UserCircle, Receipt, PiggyBank, Home, CreditCard, Ticket, LogOut } from "lucide-react"
+import { useUser } from "@/lib/useUser"
+import { useNavigate } from "react-router-dom"
 
 // Navigation items grouped by category
 const mainItems = [
@@ -50,6 +52,17 @@ const accountItems = [
 ]
 
 export function AppSidebar() {
+  const { logout } = useUser()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      navigate("/")
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
   return (
     <Sidebar>
       <SidebarContent>
@@ -125,6 +138,17 @@ export function AppSidebar() {
               ))}
             </nav>
           </div>
+        </div>
+
+        {/* Sign Out Button */}
+        <div className="mt-auto pt-4 border-t border-gray-700">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800 transition-colors w-full"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </SidebarContent>
     </Sidebar>

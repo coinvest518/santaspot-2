@@ -1,25 +1,23 @@
-// src/hooks/useUserStats.ts
 import { useState, useEffect, useContext } from 'react';
-import { supabase } from '../lib/supabase';
 import { UserContext } from '../context/UserContext';
+import { fetchUserStats } from '../lib/stats';
 
 const useUserStats = () => {
   const { user } = useContext(UserContext);
   const [userStats, setUserStats] = useState<any>(null);
 
   useEffect(() => {
-    const fetchUserStats = async () => {
+    const loadStats = async () => {
       if (user) {
-        const { data, error } = await supabase
-          .from('user_stats')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-        if (data) setUserStats(data);
-        if (error) console.error('Error fetching user stats:', error);
+        try {
+          const stats = await fetchUserStats(user.id);
+          setUserStats(stats);
+        } catch (error) {
+          console.error('Error fetching user stats:', error);
+        }
       }
     };
-    fetchUserStats();
+    loadStats();
   }, [user]);
 
   return userStats;

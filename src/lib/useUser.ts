@@ -1,10 +1,15 @@
-import { useContext } from 'react';
-import { UserContext } from '../context/UserContext';
+import { useFirebaseUser } from '@/hooks/useFirebaseUser';
 
 export const useUser = () => {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
-  return context;
+  const { firebaseUser, userProfile, login, logout, signup } = useFirebaseUser();
+  
+  return {
+    user: userProfile ? { id: firebaseUser?.uid, username: userProfile.username } : null,
+    firebaseUser,
+    userProfile,
+    login,
+    logout,
+    signup,
+    loading: !firebaseUser && !userProfile,
+  };
 };

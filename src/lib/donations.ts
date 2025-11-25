@@ -1,24 +1,8 @@
-// donations.ts
-import { supabase } from './supabase';
+import { recordDonation as firebaseRecordDonation } from './firebase';
 
 export const recordDonation = async (userId: string, amount: number, currency: string, network: string) => {
   try {
-    const { data, error } = await supabase
-      .from('donations')
-      .insert([
-        {
-          user_id: userId,
-          amount,
-          currency,
-          network
-        }
-      ]);
-
-    if (error) {
-      throw new Error(`Failed to record donation: ${error.message}`);
-    }
-
-    return data;
+    await firebaseRecordDonation(userId, amount, currency, network);
   } catch (error) {
     console.error('Error recording donation:', error);
     throw error;

@@ -1,26 +1,19 @@
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { nanoid } from 'nanoid';
+import { app } from '../lib/firebase';
 
 export const createShortUrl = async (referralCode: string) => {
   const shortCode = nanoid(6);
-  // Changed 'ref' to 'referral' to match the signup implementation
   const longUrl = `${import.meta.env.VITE_APP_URL}/signup?referral=${referralCode}`;
 
   try {
-    const { data, error } = await supabase
-      .from('short_urls')
-      .insert([
-        {
-          short_code: shortCode,
-          long_url: longUrl,
-          referral_code: referralCode,
-          created_at: new Date().toISOString()
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) throw error;
+    await addDoc(collection(db, 'short_urls'), {
+      shortCode,
+      longUrl,
+      referralCode,
+      createdAt: serverTimestamp()
+    });
 
     return {
       shortUrl: `${import.meta.env.VITE_APP_URL}/r/${shortCode}`,
@@ -30,4 +23,13 @@ export const createShortUrl = async (referralCode: string) => {
     console.error('Error creating short URL:', error);
     return null;
   }
+};
+
+/**
+ * Generates a referral link using the real domain santaspot.xyz.
+ * @param referralCode The referral code to include in the link.
+ * @returns A referral link URL.
+ */
+export const generateReferralLink = (referralCode: string): string => {
+  return `https://santaspot.xyz/r/${referralCode}`;
 };

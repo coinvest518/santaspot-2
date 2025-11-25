@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { supabase } from '../lib/supabase';
-import { useUser } from '../lib/useUser'; // Import the user context
+import { useUser } from '../lib/useUser';
+import { updateUserProfile } from '../lib/firebase';
 
 
 interface UserProfileModalProps {
@@ -30,15 +30,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     }
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ username })
-        .eq('id', user.id)
-        .select();
+      await updateUserProfile(user.id, { username });
 
-      if (error) throw error;
-
-      // Trigger confetti animation
       confetti({
         particleCount: 100,
         spread: 70,

@@ -2,241 +2,196 @@
 
 import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { supabase } from '../lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from 'sonner'
 import { StatsCards } from '../components/stats-cards'
 import { OffersFilter } from '../components/offers-filter'
 import { Clock, Coins, GamepadIcon, ClipboardList, ListTodoIcon } from 'lucide-react'
+import { useFirebaseUser } from '@/hooks/useFirebaseUser'
+import { completeOffer, subscribeToOfferCompletions } from '@/lib/firebase'
 import type { Offer, UserStats } from '../types/offers'
 
 const sampleOffers: Offer[] = [
+  // Donation Offers
   {
-    id: '1',
-    title: 'Play Game X',
-    description: 'Play Game X and earn rewards',
-    category: 'games',
+    id: 'donate-strong-offspring',
+    title: 'Support Strong Offspring Initiative',
+    description: 'Make a donation to The Strong Offspring Initiative and earn rewards',
+    category: 'tasks',
     image_file: '/images/try.jpg',
-    reward: 2.5,
+    reward: 5.0,
     is_active: true,
-    estimated_time: '10 mins',
-    link: '#',
+    estimated_time: '3 mins',
+    link: 'https://www.zeffy.com/en-US/donation-form/the-strong-offspring-initiative',
     created_at: new Date().toISOString(),
-    requirements: ['Must be 18+', 'Complete tutorial']
+    requirements: ['Make any donation amount', 'One-time completion']
   },
   {
-    id: '2',
-    title: 'Complete Survey Y',
-    description: 'Complete Survey Y for instant rewards',
-    category: 'surveys',
+    id: 'donate-real-estate',
+    title: 'Support Real Estate & Land Investing',
+    description: 'Donate to Real Estate and Land Investing initiative',
+    category: 'tasks',
+    image_file: '/images/try.jpg',
+    reward: 5.0,
+    is_active: true,
+    estimated_time: '3 mins',
+    link: 'https://www.zeffy.com/en-US/donation-form/real-estate-and-land-investing',
+    created_at: new Date().toISOString(),
+    requirements: ['Make any donation amount', 'One-time completion']
+  },
+  // Website Visit Offers
+  {
+    id: 'visit-disputeai',
+    title: 'Visit DisputeAI',
+    description: 'Check out DisputeAI and explore their services',
+    category: 'tasks',
+    image_file: '/images/try.jpg',
+    reward: 0.50,
+    is_active: true,
+    estimated_time: '2 mins',
+    link: 'https://disputeai.xyz',
+    created_at: new Date().toISOString(),
+    requirements: ['Visit website', 'One-time completion']
+  },
+  {
+    id: 'visit-consumerai',
+    title: 'Visit ConsumerAI',
+    description: 'Explore ConsumerAI information and services',
+    category: 'tasks',
+    image_file: '/images/try.jpg',
+    reward: 0.75,
+    is_active: true,
+    estimated_time: '2 mins',
+    link: 'https://consumerai.info',
+    created_at: new Date().toISOString(),
+    requirements: ['Visit website', 'One-time completion']
+  },
+  {
+    id: 'visit-fortisproles',
+    title: 'Visit Fortis Proles',
+    description: 'Discover Fortis Proles and their offerings',
+    category: 'tasks',
     image_file: '/images/try.jpg',
     reward: 1.0,
     is_active: true,
-    estimated_time: '5 mins',
-    link: '#',
+    estimated_time: '2 mins',
+    link: 'https://fortisproles.com',
     created_at: new Date().toISOString(),
+    requirements: ['Visit website', 'One-time completion']
+  },
+  {
+    id: 'visit-fdwa',
+    title: 'Visit FDWA',
+    description: 'Check out FDWA site and learn more',
+    category: 'tasks',
+    image_file: '/images/try.jpg',
+    reward: 0.60,
+    is_active: true,
+    estimated_time: '2 mins',
+    link: 'https://fdwa.site',
+    created_at: new Date().toISOString(),
+    requirements: ['Visit website', 'One-time completion']
+  },
+  {
+    id: 'visit-safe-delivery',
+    title: 'Support Safe Delivery Project',
+    description: 'Visit and learn about The Safe Delivery Project',
+    category: 'tasks',
+    image_file: '/images/try.jpg',
+    reward: 1.25,
+    is_active: true,
+    estimated_time: '3 mins',
+    link: 'https://chuffed.org/project/158912-the-safe-delivery-project',
+    created_at: new Date().toISOString(),
+    requirements: ['Visit website', 'One-time completion']
   }
 ];
 
 const Offers: React.FC = () => {
-  const [offers, setOffers] = useState<Offer[]>([])
-  const [filteredOffers, setFilteredOffers] = useState<Offer[]>([])
-  const [activeCategory, setActiveCategory] = useState('All')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [userStats, setUserStats] = useState<UserStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
+  const { firebaseUser, userProfile } = useFirebaseUser();
+  const [offers, setOffers] = useState<Offer[]>(sampleOffers);
+  const [filteredOffers, setFilteredOffers] = useState<Offer[]>(sampleOffers);
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [completedOffers, setCompletedOffers] = useState<string[]>([]);
+  const [processingOffer, setProcessingOffer] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          await Promise.all([
-            fetchOffers(),
-            fetchUserStats(user.id)
-          ])
-        } else {
-          // For development, load sample offers
-          setOffers(sampleOffers)
-        }
-      } catch (error) {
-        console.error('Error fetching initial data:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load initial data",
-          variant: "destructive"
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchInitialData()
-  }, [])
+    filterOffers();
+  }, [offers, activeCategory, searchQuery]);
 
   useEffect(() => {
-    filterOffers()
-  }, [offers, activeCategory, searchQuery])
-
-  const fetchOffers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('offers')
-        .select('*')
-        .eq('is_active', true)
-        .order('reward', { ascending: false });
-
-      if (error) throw error;
-
-      const offersWithLocalImages = data.map((offer: Offer) => ({
-        ...offer,
-        image_url: `/images/${offer.image_file}`,
-      }));
-
-      setOffers(offersWithLocalImages.length ? offersWithLocalImages : sampleOffers);
-    } catch (error) {
-      console.error('Error fetching offers:', error);
-      setOffers(sampleOffers);
-      toast({
-        title: "Notice",
-        description: "Using sample offers for demonstration",
+    if (userProfile?.uuid) {
+      const unsubscribe = subscribeToOfferCompletions(userProfile.uuid, (completedIds) => {
+        setCompletedOffers(completedIds);
       });
+      return () => unsubscribe();
     }
-  };
-
-  const fetchUserStats = async (userId: string) => {
-    try {
-      let { data, error } = await supabase
-        .from('user_stats')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          const { data: newStats, error: createError } = await supabase
-            .from('user_stats')
-            .insert([{
-              user_id: userId,
-              total_earned: 0,
-              completed_offers: 0,
-              current_streak: 0
-            }])
-            .select()
-            .single()
-
-          if (createError) throw createError
-          setUserStats(newStats)
-        } else {
-          throw error
-        }
-      } else {
-        setUserStats(data)
-      }
-    } catch (error) {
-      console.error('Error handling user stats:', error)
-      toast({
-        title: "Error",
-        description: "Failed to load user statistics",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const trackOfferClick = async (offerId, reward) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to start offers",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const randomizedReward = reward * (Math.random() * 0.5 + 0.75);
-
-      await supabase
-        .from('offer_clicks')
-        .insert([{
-          user_id: user.id,
-          offer_id: offerId,
-          ip_address: '0.0.0.0',
-          user_agent: navigator.userAgent
-        }]);
-
-      const { data, error } = await supabase
-        .from('user_stats')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (data) {
-        const { total_earned, completed_offers } = data;
-        const newTotalEarned = total_earned + randomizedReward;
-        const newCompletedOffers = completed_offers + 1;
-
-        await supabase
-          .from('user_stats')
-          .update({
-            total_earned: newTotalEarned,
-            completed_offers: newCompletedOffers
-          })
-          .eq('user_id', user.id);
-      } else {
-        await supabase
-          .from('user_stats')
-          .insert([{
-            user_id: user.id,
-            total_earned: randomizedReward,
-            completed_offers: 1,
-            current_streak: 0
-          }]);
-      }
-
-    } catch (error) {
-      console.error('Error tracking offer click:', error);
-    }
-  }
+  }, [userProfile]);
 
   const filterOffers = () => {
-    let filtered = [...offers]
+    let filtered = [...offers];
 
     if (activeCategory !== 'All') {
       filtered = filtered.filter(offer =>
         offer.category.toLowerCase() === activeCategory.toLowerCase()
-      )
+      );
     }
 
     if (searchQuery) {
       filtered = filtered.filter(offer =>
         offer.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         offer.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      );
     }
 
-    setFilteredOffers(filtered)
-  }
+    setFilteredOffers(filtered);
+  };
 
-  const handleOfferClick = async (offer) => {
-    await trackOfferClick(offer.id, offer.reward);
+  const handleOfferClick = async (offer: Offer) => {
+    if (!firebaseUser || !userProfile) {
+      toast.error("Please sign in to start offers");
+      return;
+    }
+
+    if (completedOffers.includes(offer.id)) {
+      toast.error("You've already completed this offer!");
+      return;
+    }
+
+    if (processingOffer === offer.id) {
+      return;
+    }
+
+    setProcessingOffer(offer.id);
     window.open(offer.link, '_blank');
-    toast({
-      title: "Offer Started",
-      description: `You've started: ${offer.title}. Complete it to earn $${offer.reward.toFixed(2)}!`,
+    
+    toast.success(`Opening ${offer.title}. Click "Mark as Complete" when done!`, {
+      duration: 5000,
     });
-  }
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-hite-900 via-purple-900 to-violet-900">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white" />
-      </div>
-    )
-  }
+    setTimeout(() => setProcessingOffer(null), 2000);
+  };
+
+  const handleMarkComplete = async (offer: Offer) => {
+    if (!userProfile) {
+      toast.error("Please sign in first");
+      return;
+    }
+
+    if (completedOffers.includes(offer.id)) {
+      toast.error("You've already completed this offer!");
+      return;
+    }
+
+    try {
+      await completeOffer(userProfile.uuid, offer.id, offer.reward);
+      toast.success(`Earned $${offer.reward.toFixed(2)}! 🎉`);
+    } catch (error) {
+      toast.error("Failed to complete offer. Please try again.");
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
@@ -244,7 +199,13 @@ const Offers: React.FC = () => {
         <div className="max-w-7xl mx-auto space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-white mb-6">Offer Wall</h1>
-            {userStats && <StatsCards stats={userStats} />}
+            {userProfile && (
+              <StatsCards stats={{
+                total_earned: userProfile.earnings,
+                completed_offers: userProfile.completed_offers,
+                current_streak: 0
+              }} />
+            )}
           </div>
 
           <OffersFilter
@@ -253,7 +214,6 @@ const Offers: React.FC = () => {
             activeCategory={activeCategory}
           />
 
-          {/* Offer Categories */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <Card className="bg-gradient-to-r from-blue-500 to-blue-600">
               <CardHeader>
@@ -277,7 +237,6 @@ const Offers: React.FC = () => {
               </CardContent>
             </Card>
 
-
             <Card className="bg-gradient-to-r from-blue-500 to-blue-600">
               <CardHeader>
                 <CardTitle className="flex items-center text-white">
@@ -288,10 +247,8 @@ const Offers: React.FC = () => {
                 <p className="text-white/80">Complete task and Gain Rewards</p>
               </CardContent>
             </Card>
-
           </div>
 
-          {/* Offers Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredOffers.map((offer, index) => (
               <motion.div
@@ -314,9 +271,9 @@ const Offers: React.FC = () => {
                           <GamepadIcon className="w-20 h-20 text-purple-300" />
                         ) : offer.category === 'surveys' ? (
                           <ClipboardList className="w-20 h-20 text-purple-300" />
-                        ) : offer.category === 'tasks' ? (
+                        ) : (
                           <ListTodoIcon className="w-20 h-20 text-purple-300" />
-                        ) : null} {/* Add a fallback if needed */}
+                        )}
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
@@ -350,13 +307,31 @@ const Offers: React.FC = () => {
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="w-full bg-purple-600 hover:bg-purple-700"
-                      onClick={() => handleOfferClick(offer)}
-                    >
-                      Start Offer
-                    </Button>
+                  <CardFooter className="flex gap-2">
+                    {completedOffers.includes(offer.id) ? (
+                      <Button
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        disabled
+                      >
+                        ✓ Completed
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          className="flex-1 bg-purple-600 hover:bg-purple-700"
+                          onClick={() => handleOfferClick(offer)}
+                          disabled={processingOffer === offer.id}
+                        >
+                          {processingOffer === offer.id ? 'Opening...' : 'Start Offer'}
+                        </Button>
+                        <Button
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleMarkComplete(offer)}
+                        >
+                          Mark Complete
+                        </Button>
+                      </>
+                    )}
                   </CardFooter>
                 </Card>
               </motion.div>
@@ -365,7 +340,7 @@ const Offers: React.FC = () => {
         </div>
       </main>
     </div>
-  )
-}
+  );
+};
 
-export default Offers
+export default Offers;

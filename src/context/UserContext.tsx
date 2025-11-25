@@ -1,18 +1,19 @@
 import { createContext } from 'react';
 import { User } from '../types/types';
-import { Session } from '@supabase/supabase-js';
+import { User as FirebaseUser } from 'firebase/auth';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../lib/supabase';
+import { auth, db, fetchUserProfile } from '../lib/firebase';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 
 
 interface UserContextType {
   user: User | null;
-  session: Session | null;
+  session: FirebaseUser | null;
   login: (userData: User) => void;
   logout: () => Promise<void>;
   loading: boolean;
-
 }
+
 export const UserContext = createContext<UserContextType>({
   user: null,
   session: null,
@@ -21,42 +22,35 @@ export const UserContext = createContext<UserContextType>({
   loading: true,
 });
 
-// Handle the email confirmation callback
 export const handleEmailConfirmation = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const user = auth.currentUser;
   
-  if (error) {
-    throw error;
+  if (!user) {
+    return null;
   }
 
-  if (session?.user) {
-    // Check if profile exists
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
+  const profile = await fetchUserProfile(user.uid);
 
-    if (!existingProfile) {
-      // Create profile if it doesn't exist
-      const referralCode = uuidv4().slice(0, 8); // Generate a new referral code
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          id: session.user.id,
-          username: '',
-          referral_code: referralCode,
-          earnings: 100 // Initial signup bonus
-        }]);
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw new Error(`Profile creation failed: ${profileError.message}`);
-      }
-    }
-
-    return session.user;
+  if (!profile) {
+    const userUUID = uuidv4();
+    const referralCode = uuidv4().slice(0, 8).toUpperCase();
+    
+    await setDoc(doc(db, 'users', user.uid), {
+      uid: user.uid,
+      uuid: userUUID,
+      email: user.email || '',
+      username: '',
+      referral_code: referralCode,
+      earnings: 100,
+      total_clicks: 0,
+      total_referrals: 0,
+      completed_offers: 0,
+      total_donated: 0,
+      influence_score: 0,
+      created_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
+    });
   }
 
-  return null;
+  return user;
 };

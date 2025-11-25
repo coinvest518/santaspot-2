@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../lib/supabase';
+import { motion } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -14,9 +13,10 @@ import {
 } from 'chart.js';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User } from '@supabase/supabase-js';
 import { Copy, Share2, Gift, DollarSign, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { useFirebaseUser } from '@/hooks/useFirebaseUser';
+import { generateReferralLink, getReferrals } from '@/lib/firebase';
 
 ChartJS.register(
   CategoryScale,
@@ -28,86 +28,34 @@ ChartJS.register(
   Legend
 );
 
-interface Profile {
-  id: string;
-  username: string | null;
-  referral_code: string;
-  earnings: number;
-}
-
-interface ReferralData {
-  created_at: string;
-  referrer_id: string;
-  referred_id: string;
-  status: string;
-}
-
 const Referrals: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [referrals, setReferrals] = useState<ReferralData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { userProfile, loading } = useFirebaseUser();
+  const [referrals, setReferrals] = useState([]);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    getCurrentUser();
-  }, []);
+    const loadReferrals = async () => {
+      if (!userProfile) return;
+      try {
+        const data = await getReferrals(userProfile.uuid);
+        setReferrals(data);
+      } catch (error) {
+        console.error('Error fetching referrals:', error);
+      }
+    };
 
-  useEffect(() => {
-    if (user) {
-      fetchUserProfile();
-      fetchReferrals();
-    }
-  }, [user]);
-
-  const getCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
-  };
-
-  const fetchUserProfile = async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) {
-      console.error('Error fetching profile:', error);
-    } else if (data) {
-      setProfile(data);
-    }
-    setLoading(false);
-  };
-
-  const fetchReferrals = async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referrer_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching referrals:', error);
-    } else if (data) {
-      setReferrals(data);
-    }
-  };
+    loadReferrals();
+  }, [userProfile]);
 
   const getChartData = () => {
-    // Group referrals by date
-    const grouped = referrals.reduce((acc: { [key: string]: number }, curr) => {
-      const date = new Date(curr.created_at).toLocaleDateString();
+    const grouped = referrals.reduce((acc: any, curr: any) => {
+      const date = new Date(curr.created_at.toDate()).toLocaleDateString();
       acc[date] = (acc[date] || 0) + 1;
       return acc;
     }, {});
 
     return {
-      labels: Object.keys(grouped).slice(-7), // Last 7 days
+      labels: Object.keys(grouped).slice(-7),
       datasets: [
         {
           label: 'Referrals',
@@ -121,9 +69,9 @@ const Referrals: React.FC = () => {
   };
 
   const copyReferralLink = async () => {
-    if (!profile?.referral_code) return;
+    if (!userProfile?.referral_code) return;
     
-    const referralLink = `${window.location.origin}/signup?referral=${profile.referral_code}`;
+    const referralLink = generateReferralLink(userProfile.referral_code);
     await navigator.clipboard.writeText(referralLink);
     setCopied(true);
     toast.success('Referral link copied!');
@@ -131,9 +79,9 @@ const Referrals: React.FC = () => {
   };
 
   const shareReferralLink = async () => {
-    if (!profile?.referral_code) return;
+    if (!userProfile?.referral_code) return;
 
-    const referralLink = `${window.location.origin}/signup?referral=${profile.referral_code}`;
+    const referralLink = generateReferralLink(userProfile.referral_code);
     try {
       await navigator.share({
         title: 'Join Santa\'s Pot!',
@@ -170,7 +118,7 @@ const Referrals: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-lg mb-2">Your Referral Code:</p>
-                    <p className="text-3xl font-bold">{profile?.referral_code}</p>
+                    <p className="text-3xl font-bold">{userProfile?.referral_code}</p>
                   </div>
                   <div className="space-x-4">
                     <Button
@@ -228,7 +176,7 @@ const Referrals: React.FC = () => {
                   <CardContent>
                     <p className="text-4xl font-bold text-green-600">
                       {referrals.filter(r => {
-                        const date = new Date(r.created_at);
+                        const date = new Date(r.created_at.toDate());
                         const now = new Date();
                         return date.getMonth() === now.getMonth();
                       }).length}
@@ -251,7 +199,7 @@ const Referrals: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <p className="text-4xl font-bold text-yellow-600">
-                      ${profile?.earnings.toFixed(2)}
+                      ${userProfile?.earnings.toFixed(2)}
                     </p>
                   </CardContent>
                 </Card>

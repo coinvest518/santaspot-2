@@ -8,35 +8,37 @@ const AnimatedPotCSS = () => {
       className="relative w-64 h-64"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
+      style={{ willChange: 'transform' }}
     >
       <motion.div
         className="absolute inset-0"
         animate={{
           scale: [1, 1.05, 1],
-          rotateY: [0, 360],
         }}
         transition={{
           duration: 3,
           repeat: Infinity,
           ease: "easeInOut",
         }}
+        style={{ willChange: 'transform' }}
       >
-        {/* Regular img tag for Vite */}
         <img
           src={christmasPot}
           alt="Animated Pot"
           className="w-full h-full object-contain drop-shadow-2xl"
+          loading="lazy"
         />
       </motion.div>
       
-      {/* Sparkles */}
-      {[...Array(6)].map((_, i) => (
+      {/* Reduced sparkles for performance */}
+      {[...Array(3)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute w-2 h-2 bg-yellow-300 rounded-full"
           style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
+            top: `${20 + i * 30}%`,
+            left: `${20 + i * 30}%`,
+            willChange: 'transform, opacity'
           }}
           animate={{
             scale: [0, 1, 0],
@@ -45,18 +47,19 @@ const AnimatedPotCSS = () => {
           transition={{
             duration: 2,
             repeat: Infinity,
-            delay: i * 0.2,
+            delay: i * 0.3,
             ease: "easeInOut",
           }}
         />
       ))}
 
-      {/* Glow effect behind the image */}
+      {/* Glow effect */}
       <div 
-        className="absolute inset-0 blur-xl opacity-30"
+        className="absolute inset-0 blur-xl opacity-20"
         style={{
           background: 'radial-gradient(circle at center, #ffd700 0%, transparent 70%)',
-          zIndex: -1
+          zIndex: -1,
+          pointerEvents: 'none'
         }}
       />
     </motion.div>

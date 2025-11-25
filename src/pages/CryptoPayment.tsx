@@ -1,13 +1,13 @@
 // src/pages/CryptoPayment.tsx
 import React from 'react';
-import CryptoPaymentForm from '@/components/CryptoPaymentForm';
+import CryptoPaymentPage from '@/components/CryptoPaymentForm';
 
-const CryptoPaymentPage = () => {
+const CryptoPayment = () => {
   return (
     <div className="container mx-auto">
-      <CryptoPaymentForm />
+      <CryptoPaymentPage />
     </div>
   );
 };
 
-export default CryptoPaymentPage;
+export default CryptoPayment;

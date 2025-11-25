@@ -1,4 +1,5 @@
-import { supabase } from './supabase';
+import { db } from './firebase';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 export interface DashboardStats {
   total_earned: number;
@@ -9,27 +10,30 @@ export interface DashboardStats {
 }
 
 export const fetchUserStats = async (userId: string): Promise<DashboardStats> => {
-  console.log('Fetching stats for user:', userId);
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
 
-  // Fetch user stats from 'user_stats' table
-  const { data: userStats, error: statsError } = await supabase
-    .from('user_stats')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
+    const userData = userDoc.data();
+    
+    const clicksQuery = query(collection(db, 'clicks'), where('user_uuid', '==', userData.uuid));
+    const clicksSnap = await getDocs(clicksQuery);
+    
+    const referralsQuery = query(collection(db, 'referrals'), where('referrer_uuid', '==', userData.uuid));
+    const referralsSnap = await getDocs(referralsQuery);
 
-  if (statsError) {
-    console.error('Error fetching user stats:', statsError);
-    throw statsError;
+    return {
+      total_earned: userData.earnings || 0,
+      clicks: clicksSnap.size,
+      referrals: referralsSnap.size,
+      completed_offers: userData.completed_offers || 0,
+      current_streak: 0,
+    };
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    throw error;
   }
-
-  console.log('Stats fetched successfully:', userStats);
-
-  return {
-    total_earned: userStats.total_earned || 0,
-    clicks: userStats.clicks || 0,
-    referrals: userStats.referrals || 0,
-    completed_offers: userStats.completed_offers || 0,
-    current_streak: userStats.current_streak || 0,
-  };
 };

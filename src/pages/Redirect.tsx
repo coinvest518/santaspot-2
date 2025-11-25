@@ -1,57 +1,44 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { getUserByReferralCode, trackReferralClick } from '@/lib/firebase';
 
 export const Redirect = () => {
-  const { shortCode } = useParams();
+  const { referralCode } = useParams<{ referralCode: string }>();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const redirectToLongUrl = async () => {
-      if (!shortCode) return;
+    const handleReferral = async () => {
+      if (!referralCode) {
+        navigate('/');
+        return;
+      }
 
       try {
-        // Get the long URL
-        const { data, error } = await supabase
-          .from('short_urls')
-          .select('long_url, referral_code')
-          .eq('short_code', shortCode)
-          .single();
+        // Find the user who owns the referral code
+        const referringUser = await getUserByReferralCode(referralCode);
 
-        if (error || !data) {
-          navigate('/404');
-          return;
+        if (referringUser) {
+          // 1. Track the click for the referring user
+          await trackReferralClick(referringUser.uuid, referralCode);
+
+          // 2. Save the referral code to local storage to be used on signup
+          localStorage.setItem('referralCode', referralCode);
         }
-
-        // Track the click
-        await supabase
-          .from('referral_clicks')
-          .insert([
-            {
-              short_code: shortCode,
-              referral_code: data.referral_code,
-              user_agent: navigator.userAgent,
-            }
-          ]);
-
-        // Increment click count
-        await supabase
-          .rpc('increment_clicks', { short_code_param: shortCode });
-
-        // Redirect to the long URL
-        window.location.href = data.long_url;
       } catch (error) {
-        console.error('Error redirecting:', error);
-        navigate('/404');
+        console.error('Error handling referral link:', error);
+      } finally {
+        // 3. Redirect to the main page
+        navigate('/');
       }
     };
 
-    redirectToLongUrl();
-  }, [shortCode, navigate]);
+    handleReferral();
+  }, [referralCode, navigate]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-red-500" />
+      <p className="ml-4 text-lg">Redirecting...</p>
     </div>
   );
 };
