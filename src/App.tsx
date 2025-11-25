@@ -2,9 +2,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { FirebaseUserProvider } from './context/FirebaseUserProvider';
+import { useFirebaseUser } from "./hooks/useFirebaseUser";
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Layout } from './components/Layout';
 import { Toaster } from "sonner";
+import FullScreenLoader from "./components/ui/FullScreenLoader";
 
 // Page imports
 import Landing from "./pages/Landing";
@@ -28,88 +30,101 @@ const queryClient = new QueryClient({
   },
 });
 
+const AppContent = () => {
+  const { firebaseUser, loading: isUserLoading } = useFirebaseUser();
+
+  if (isUserLoading && firebaseUser) {
+    return <FullScreenLoader />;
+  }
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes - no layout */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/r/:referralCode" element={<Redirect />} />
+
+        {/* Protected routes with layout */}
+        <Route path="/dashboard" element={
+          <Layout requireAuth>
+            <Dashboard />
+          </Layout>
+        } />
+        <Route path="/crypto-payment" element={
+          <Layout requireAuth>
+            <CryptoPaymentPage />
+          </Layout>
+        } />
+
+        <Route path="/payment-completion" element={
+          <Layout requireAuth>
+            <PaymentCompletion />
+          </Layout>
+        } />
+        <Route path="/referrals" element={
+          <Layout requireAuth>
+            <Referrals />
+          </Layout>
+        } />
+        <Route path="/offers" element={
+          <Layout requireAuth>
+            <Offers />
+          </Layout>
+        } />
+        <Route path="/payments" element={
+          <Layout requireAuth>
+            <Payments />
+          </Layout>
+        } />
+        <Route path="/withdraw" element={
+          <Layout requireAuth>
+            <Withdraw />
+          </Layout>
+        } />
+        <Route path="/complete-profile" element={
+          <Layout requireAuth>
+            <CompleteProfile />
+          </Layout>
+        } />
+
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <FirebaseUserProvider>
       <SidebarProvider defaultOpen={true}>
         <TooltipProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public routes - no layout */}
-              <Route path="/" element={<Landing />} />
-              <Route path="/r/:referralCode" element={<Redirect />} />
+          <AppContent />
+        </TooltipProvider>
 
-              {/* Protected routes with layout */}
-              <Route path="/dashboard" element={
-                <Layout requireAuth>
-                  <Dashboard />
-                </Layout>
-              } />
-              <Route path="/crypto-payment" element={
-                <Layout requireAuth>
-                  <CryptoPaymentPage />
-                </Layout> 
-                }/>
+        <Toaster
+          position="top-center"
+          expand={true}
+          richColors
+          closeButton
+          style={{ marginTop: '20vh' }}
+          toastOptions={{
+            style: {
+              background: 'rgba(255, 255, 255, 0.9)',
+              padding: '16px',
+              borderRadius: '12px',
+              fontSize: '1.1rem',
+              maxWidth: '500px',
+              width: '90%',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            },
+          }}
+        />
+        <Analytics />
 
-            <Route path="/payment-completion" element={
-              <Layout requireAuth>
-                <PaymentCompletion />
-              </Layout>
-            } />
-            <Route path="/referrals" element={
-              <Layout requireAuth>
-                <Referrals />
-              </Layout>
-            } />
-            <Route path="/offers" element={
-              <Layout requireAuth>
-                <Offers />
-              </Layout>
-            } />
-            <Route path="/payments" element={
-              <Layout requireAuth>
-                <Payments />
-              </Layout>
-            } />
-            <Route path="/withdraw" element={
-              <Layout requireAuth>
-                <Withdraw />
-              </Layout>
-            } />
-            <Route path="/complete-profile" element={
-              <Layout requireAuth>
-                <CompleteProfile />
-              </Layout>
-            } />
-
-            {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-
-      <Toaster
-        position="top-center"
-        expand={true}
-        richColors
-        closeButton
-        style={{ marginTop: '20vh' }}
-        toastOptions={{
-          style: {
-            background: 'rgba(255, 255, 255, 0.9)',
-            padding: '16px',
-            borderRadius: '12px',
-            fontSize: '1.1rem',
-            maxWidth: '500px',
-            width: '90%',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          },
-        }}
-      />
-      <Analytics />
-
-    </SidebarProvider>
-  </FirebaseUserProvider>
+      </SidebarProvider>
+    </FirebaseUserProvider>
   </QueryClientProvider >
 );
 

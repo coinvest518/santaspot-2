@@ -20,17 +20,18 @@ import {
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { firebaseUser } = useFirebaseUser();
+  const { firebaseUser, loading } = useFirebaseUser();
   const [isLogin, setIsLogin] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
   const [showRewardPot, setShowRewardPot] = useState(() => {
     return !localStorage.getItem('rewardPotClaimed');
   });
 
   useEffect(() => {
-    if (firebaseUser) {
+    if (firebaseUser && !loading) {
       navigate("/dashboard");
     }
-  }, [firebaseUser, navigate]);
+  }, [firebaseUser, loading, navigate]);
 
   const handleClaimReward = async () => {
     try {
@@ -43,12 +44,23 @@ const Landing = () => {
   };
 
   const AuthDialogContent = () => (
-    <DialogContent className="sm:max-w-[425px] bg-gray-100">
+    <DialogContent className="sm:max-w-[425px] bg-gray-100" onInteractOutside={(e) => {
+      if (authLoading || loading) {
+        e.preventDefault();
+      }
+    }}>
       <DialogHeader>
         <DialogTitle>{isLogin ? "Sign In" : "Create Your Account"}</DialogTitle>
       </DialogHeader>
-      <FirebaseAuthForm isLogin={isLogin} />
-      <Button variant="link" onClick={() => setIsLogin(!isLogin)}>
+      <FirebaseAuthForm 
+        isLogin={isLogin} 
+        onLoadingChange={setAuthLoading}
+      />
+      <Button 
+        variant="link" 
+        onClick={() => setIsLogin(!isLogin)}
+        disabled={authLoading || loading}
+      >
         {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
       </Button>
     </DialogContent>

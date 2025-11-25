@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 
 interface FirebaseAuthFormProps {
   isLogin: boolean;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
-const FirebaseAuthForm = ({ isLogin }: FirebaseAuthFormProps) => {
+const FirebaseAuthForm = ({ isLogin, onLoadingChange }: FirebaseAuthFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [referralCode, setReferralCode] = useState(() => {
@@ -24,12 +25,12 @@ const FirebaseAuthForm = ({ isLogin }: FirebaseAuthFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    onLoadingChange?.(true);
 
     try {
       if (isLogin) {
         await login(email, password);
         toast.success('Signed in successfully!');
-        navigate('/dashboard');
       } else {
         // Save referral code to localStorage before signup
         if (referralCode.trim()) {
@@ -37,22 +38,26 @@ const FirebaseAuthForm = ({ isLogin }: FirebaseAuthFormProps) => {
         }
         await signup(email, password);
         toast.success('Account created! Welcome to Santa\'s Pot! 🎅');
-        navigate('/dashboard');
       }
     } catch (error: any) {
       toast.error(error.message || 'Authentication failed');
     } finally {
       setLoading(false);
+      onLoadingChange?.(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
+    setLoading(true);
+    onLoadingChange?.(true);
     try {
       await loginWithGoogle();
       toast.success('Signed in with Google successfully!');
-      navigate('/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Google sign-in failed');
+    } finally {
+      setLoading(false);
+      onLoadingChange?.(false);
     }
   };
 
@@ -125,8 +130,15 @@ const FirebaseAuthForm = ({ isLogin }: FirebaseAuthFormProps) => {
         <span className="mx-4 text-sm text-gray-500">OR</span>
         <div className="flex-grow border-t border-gray-300"></div>
       </div>
-      <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">
-        Sign In with Google
+      <Button onClick={handleGoogleSignIn} variant="outline" className="w-full" disabled={loading}>
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Signing in...
+          </>
+        ) : (
+          'Sign In with Google'
+        )}
       </Button>
     </CardContent>
   );
