@@ -28,8 +28,8 @@ const LiveCounter: React.FC = () => {
   };
 
   return (
-    <div className="p-4 bg-gradient-to-r from-green-400 to-blue-500 shadow-2xl rounded-2xl text-center">
-      <h2 className="text-2xl font-bold mb-4 text-white">{prizePool?.name || 'Prize Pool'}</h2>
+    <div className="p-4 bg-white/20 backdrop-blur-lg shadow-2xl rounded-2xl text-center border border-white/30">
+      <h2 className="text-2xl font-bold mb-4 text-white">Current Donation Pot</h2>
       <div 
         className={`text-5xl font-extrabold text-white transition-transform duration-500 ${
           isAnimating ? 'scale-110 animate-pulse' : ''
@@ -39,7 +39,7 @@ const LiveCounter: React.FC = () => {
       </div>
       {prizePool && (
         <p className="text-white/80 text-sm mt-2">
-          {prizePool.entries} participants entered
+          {prizePool.entries} Donations made
         </p>
       )}
     </div>
