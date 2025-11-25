@@ -1,10 +1,11 @@
 // components/Layout.tsx
 import React from 'react';
 import { AppSidebar } from '@/components/AppSidebar';
-import { useUser } from '@/lib/useUser';
+import { useFirebaseUser } from '@/hooks/useFirebaseUser';
 import { Navigate } from 'react-router-dom';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import FullScreenLoader from '@/components/ui/FullScreenLoader';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,18 +13,14 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, requireAuth = true }) => {
-  const { user, loading } = useUser();
+  const { firebaseUser, userProfile, loading } = useFirebaseUser();
   const { state } = useSidebar();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-      </div>
-    );
+    return <FullScreenLoader />;
   }
 
-  if (requireAuth && !user) {
+  if (requireAuth && (!firebaseUser || !userProfile)) {
     return <Navigate to="/" replace />;
   }
 

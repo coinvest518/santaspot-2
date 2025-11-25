@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom"
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar"
 import { Users, Gift, UserCircle, Receipt, PiggyBank, Home, CreditCard, Ticket, LogOut } from "lucide-react"
-import { useUser } from "@/lib/useUser"
+import { useFirebaseUser } from "@/hooks/useFirebaseUser"
 import { useNavigate } from "react-router-dom"
 
 // Navigation items grouped by category
@@ -52,7 +52,7 @@ const accountItems = [
 ]
 
 export function AppSidebar() {
-  const { logout } = useUser()
+  const { logout } = useFirebaseUser()
   const navigate = useNavigate()
 
   const handleLogout = async () => {

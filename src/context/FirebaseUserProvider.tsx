@@ -13,9 +13,11 @@ export const FirebaseUserProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges(async (user) => {
       setFirebaseUser(user);
+      setError(null);
       
       if (user) {
         try {
+          setLoading(true);
           // Migrate user first to ensure all fields exist
           await migrateUserProfile(user.uid);
           const profile = await fetchUserProfile(user.uid);
@@ -28,12 +30,14 @@ export const FirebaseUserProvider: React.FC<{ children: React.ReactNode }> = ({ 
         } catch (err) {
           console.error('Error fetching profile:', err);
           setError('Failed to load user profile');
+          setUserProfile(null);
+        } finally {
+          setLoading(false);
         }
       } else {
         setUserProfile(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => unsubscribe();

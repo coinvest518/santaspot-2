@@ -20,6 +20,7 @@ import { Redirect } from './pages/Redirect';
 import CompleteProfile from "./pages/CompleteProfile";
 import { Analytics } from "@vercel/analytics/react"
 import CryptoPaymentPage from './pages/CryptoPayment';
+import AuthDebug from './components/AuthDebug';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,9 +32,9 @@ const queryClient = new QueryClient({
 });
 
 const AppContent = () => {
-  const { firebaseUser, loading: isUserLoading } = useFirebaseUser();
+  const { firebaseUser, userProfile, loading: isUserLoading } = useFirebaseUser();
 
-  if (isUserLoading && firebaseUser) {
+  if (isUserLoading && firebaseUser && !userProfile) {
     return <FullScreenLoader />;
   }
 
@@ -122,6 +123,7 @@ const App = () => (
           }}
         />
         <Analytics />
+        <AuthDebug />
 
       </SidebarProvider>
     </FirebaseUserProvider>

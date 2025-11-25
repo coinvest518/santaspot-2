@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { useUser } from '../lib/useUser';
+import { useFirebaseUser } from '../hooks/useFirebaseUser';
 import { updateUserProfile } from '../lib/firebase';
 
 
@@ -12,7 +12,7 @@ interface UserProfileModalProps {
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose, }) => {
-  const { user } = useUser(); // Access user from context
+  const { firebaseUser } = useFirebaseUser(); // Access user from context
 
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,14 +23,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     setIsLoading(true);
     setError('');
 
-    if (!user || !user.id) {
+    if (!firebaseUser || !firebaseUser.uid) {
       setError('User not logged in.');
       setIsLoading(false);
       return;
     }
 
     try {
-      await updateUserProfile(user.id, { username });
+      await updateUserProfile(firebaseUser.uid, { username });
 
       confetti({
         particleCount: 100,
