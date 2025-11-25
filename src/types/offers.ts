@@ -20,6 +20,7 @@ export interface UserStats {
   total_earned: number;
   completed_offers: number;
   current_streak: number;
+  social_shares?: number;
   last_offer_completed?: string;
   updated_at?: string;
 }

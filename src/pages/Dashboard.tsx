@@ -26,6 +26,7 @@ interface DashboardData {
   referral_code: string;
   influence_score: number;
   total_donated: number;
+  social_shares: number;
 }
 
 const Dashboard = () => {
@@ -41,6 +42,7 @@ const Dashboard = () => {
     referral_code: '',
     influence_score: 0,
     total_donated: 0,
+    social_shares: 0,
   });
   const [donations, setDonations] = useState<DonationRecord[]>([]);
   const [showDonations, setShowDonations] = useState(false);
@@ -78,10 +80,11 @@ const Dashboard = () => {
           earnings: profile.earnings || 0,
           completed_offers: profile.completed_offers || 0,
           username: profile.username || 'User',
-          influence_score: profile.influence_score || 0,
+          influence_score: profile.total_points || 0,
           total_donated: profile.total_donated || 0,
           referral_clicks: profile.total_clicks || 0,
           referrals: profile.total_referrals || 0,
+          social_shares: profile.social_shares || 0,
         }));
         
         // Auto-enter into prize pool if withdrawal eligible
@@ -149,8 +152,8 @@ const Dashboard = () => {
   const shareOnFacebook = async () => {
     const url = encodeURIComponent(dashboardData.referralLink);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
-    if (initialUserProfile) {
-      await trackSocialShare(initialUserProfile.uuid, 'facebook');
+    if (initialUserProfile && firebaseUser) {
+      await trackSocialShare(firebaseUser.uid, 'facebook');
       toast.success('Opening Facebook share dialog... +2 points!');
     }
   };
@@ -159,8 +162,8 @@ const Dashboard = () => {
     const text = encodeURIComponent(getShareMessage());
     const url = encodeURIComponent(dashboardData.referralLink);
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'width=600,height=400');
-    if (initialUserProfile) {
-      await trackSocialShare(initialUserProfile.uuid, 'twitter');
+    if (initialUserProfile && firebaseUser) {
+      await trackSocialShare(firebaseUser.uid, 'twitter');
       toast.success('Opening Twitter share dialog... +2 points!');
     }
   };
@@ -168,8 +171,8 @@ const Dashboard = () => {
   const shareOnWhatsApp = async () => {
     const text = encodeURIComponent(`${getShareMessage()} ${dashboardData.referralLink}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
-    if (initialUserProfile) {
-      await trackSocialShare(initialUserProfile.uuid, 'whatsapp');
+    if (initialUserProfile && firebaseUser) {
+      await trackSocialShare(firebaseUser.uid, 'whatsapp');
       toast.success('Opening WhatsApp... +2 points!');
     }
   };
@@ -178,8 +181,8 @@ const Dashboard = () => {
     const text = encodeURIComponent(getShareMessage());
     const url = encodeURIComponent(dashboardData.referralLink);
     window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
-    if (initialUserProfile) {
-      await trackSocialShare(initialUserProfile.uuid, 'telegram');
+    if (initialUserProfile && firebaseUser) {
+      await trackSocialShare(firebaseUser.uid, 'telegram');
       toast.success('Opening Telegram... +2 points!');
     }
   };
@@ -225,7 +228,7 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto space-y-8">
           <h1 className="text-3xl font-bold">Dashboard</h1>
 
-          <Card className="bg-primary text-white p-6 mb-8">
+          <Card className="bg-primary text-black p-6 mb-8">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Total Earnings</h2>
               <span className="text-3xl font-bold">${dashboardData.earnings.toFixed(2)}</span>
@@ -234,7 +237,7 @@ const Dashboard = () => {
 
           <Card className="p-6 bg-white shadow-lg">
             <h3 className="text-lg font-semibold mb-4">Your Stats</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center">
                 <p className="text-sm text-gray-500">Total Clicks</p>
                 <p className="text-2xl font-bold text-primary">{dashboardData.referral_clicks}</p>
@@ -242,6 +245,10 @@ const Dashboard = () => {
               <div className="text-center">
                 <p className="text-sm text-gray-500">Total Referrals</p>
                 <p className="text-2xl font-bold text-primary">{dashboardData.referrals}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-500">Social Shares</p>
+                <p className="text-2xl font-bold text-primary">{dashboardData.social_shares}</p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-500">Total Donated</p>

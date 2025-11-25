@@ -274,12 +274,13 @@ export const trackReferralClick = async (userUUID: string, referralCode: string)
     
     await addDoc(collection(db, 'clicks'), clickData);
     
-    // Update user's total clicks, points and influence score
+    // Update user's total clicks, earnings, points and influence score
     const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
     if (!userDoc.empty) {
       const uid = userDoc.docs[0].id;
       const profile = userDoc.docs[0].data() as UserProfile;
       const newTotalClicks = (profile.total_clicks || 0) + 1;
+      const newEarnings = (profile.earnings || 0) + 2; // +$2 for click
       const newPoints = (profile.total_points || 0) + 1;
       const newInfluenceScore = calculateInfluenceScore(
         profile.total_donated || 0,
@@ -288,11 +289,12 @@ export const trackReferralClick = async (userUUID: string, referralCode: string)
       );
       await updateUserProfile(uid, {
         total_clicks: newTotalClicks,
+        earnings: newEarnings,
         total_points: newPoints,
         influence_score: newInfluenceScore,
       });
       
-      await checkWithdrawalEligibility(userUUID);
+      await checkWithdrawalEligibility(uid);
     }
   } catch (error) {
     console.error('Error tracking click:', error);
@@ -337,6 +339,7 @@ export const createReferralRecord = async (referrerUUID: string, referredUUID: s
       const uid = referrerDoc.docs[0].id;
       const profile = referrerDoc.docs[0].data() as UserProfile;
       const newTotalReferrals = (profile.total_referrals || 0) + 1;
+      const newEarnings = (profile.earnings || 0) + 50; // $50 referral bonus
       const newPoints = (profile.total_points || 0) + 50; // Biggest point reward
       const newInfluenceScore = calculateInfluenceScore(
         profile.total_donated || 0,
@@ -345,12 +348,12 @@ export const createReferralRecord = async (referrerUUID: string, referredUUID: s
       );
       await updateUserProfile(uid, {
         total_referrals: newTotalReferrals,
-        earnings: (profile.earnings || 0) + 50, // Referral bonus
+        earnings: newEarnings,
         total_points: newPoints,
         influence_score: newInfluenceScore,
       });
       
-      await checkWithdrawalEligibility(referrerUUID);
+      await checkWithdrawalEligibility(uid);
     }
   } catch (error) {
     console.error('Error creating referral record:', error);
@@ -409,7 +412,7 @@ export const recordDonation = async (userUUID: string, amount: number, currency:
         influence_score: newInfluenceScore,
       });
       
-      await checkWithdrawalEligibility(userUUID);
+      await checkWithdrawalEligibility(uid);
     }
     
     // Update global pot total
@@ -600,7 +603,7 @@ export const completeOffer = async (userUUID: string, offerId: string, reward: n
       console.log(`Updated user ${userUUID}: earnings=${newEarnings}, offers=${newCompletedOffers}, points=${newPoints}`);
       
       // Check withdrawal eligibility after offer completion
-      await checkWithdrawalEligibility(userUUID);
+      await checkWithdrawalEligibility(uid);
     } else {
       console.error('User not found with UUID:', userUUID);
     }
@@ -771,10 +774,12 @@ export const syncUserStats = async (userUUID: string) => {
     const completedOffers = offersSnap.size;
     const offerEarnings = offersSnap.docs.reduce((sum, doc) => sum + (doc.data().reward || 0), 0);
     
-    // Calculate total earnings: signup bonus + referral bonuses + offer earnings
+    // Calculate total earnings: signup bonus + referral bonuses + offer earnings + click earnings + social share earnings
     const signupBonus = 200;
-    const referralEarnings = totalReferrals * 50;
-    const totalEarnings = signupBonus + referralEarnings + offerEarnings;
+    const referralEarnings = totalReferrals * 50; // $50 per referral
+    const clickEarnings = totalClicks * 2; // $2 per click
+    const socialShareEarnings = (currentProfile.social_shares || 0) * 2; // $2 per share
+    const totalEarnings = signupBonus + referralEarnings + offerEarnings + clickEarnings + socialShareEarnings;
     
     // Calculate total points
     const clickPoints = totalClicks * 1;
@@ -806,11 +811,18 @@ export const syncUserStats = async (userUUID: string) => {
       totalReferrals,
       completedOffers,
       totalEarnings,
-      totalPoints
+      totalPoints,
+      breakdown: {
+        signupBonus,
+        referralEarnings,
+        offerEarnings,
+        clickEarnings,
+        socialShareEarnings
+      }
     });
     
     // Check withdrawal eligibility after sync
-    await checkWithdrawalEligibility(userUUID);
+    await checkWithdrawalEligibility(uid);
     
     return updates;
   } catch (error) {
@@ -874,25 +886,35 @@ export const subscribeToWithdrawals = (userUUID: string, callback: (withdrawals:
   });
 };
 
-// Social share tracking
-export const trackSocialShare = async (userUUID: string, platform: string) => {
+// Social share tracking - using Firebase Auth UID directly
+export const trackSocialShare = async (uid: string, platform: string) => {
   try {
-    const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
-    if (!userDoc.empty) {
-      const uid = userDoc.docs[0].id;
-      const profile = userDoc.docs[0].data() as UserProfile;
+    console.log('trackSocialShare called:', { uid, platform });
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    console.log('User doc found:', userDoc.exists());
+    
+    if (userDoc.exists()) {
+      const profile = userDoc.data() as UserProfile;
       const newShares = (profile.social_shares || 0) + 1;
+      const newEarnings = (profile.earnings || 0) + 2; // +$2 for social share
       const newPoints = (profile.total_points || 0) + 2;
+      
+      console.log('Updating social shares:', { oldShares: profile.social_shares, newShares, newEarnings, newPoints });
       
       await updateUserProfile(uid, {
         social_shares: newShares,
+        earnings: newEarnings,
         total_points: newPoints,
       });
       
-      await checkWithdrawalEligibility(userUUID);
+      console.log('Social share tracked successfully');
+      await checkWithdrawalEligibility(uid);
+    } else {
+      console.error('User not found with UID:', uid);
     }
   } catch (error) {
     console.error('Error tracking social share:', error);
+    throw error;
   }
 };
 
@@ -911,20 +933,19 @@ export const trackOfferClick = async (userUUID: string, offerId: string) => {
         total_points: newPoints,
       });
       
-      await checkWithdrawalEligibility(userUUID);
+      await checkWithdrawalEligibility(uid);
     }
   } catch (error) {
     console.error('Error tracking offer click:', error);
   }
 };
 
-// Check withdrawal eligibility
-export const checkWithdrawalEligibility = async (userUUID: string) => {
+// Check withdrawal eligibility - using Firebase Auth UID directly
+export const checkWithdrawalEligibility = async (uid: string) => {
   try {
-    const userDoc = await getDocs(query(collection(db, 'users'), where('uuid', '==', userUUID)));
-    if (!userDoc.empty) {
-      const uid = userDoc.docs[0].id;
-      const profile = userDoc.docs[0].data() as UserProfile;
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      const profile = userDoc.data() as UserProfile;
       
       const requirements = {
         hasDonation: (profile.total_donated || 0) >= 1,

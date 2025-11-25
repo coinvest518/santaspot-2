@@ -382,7 +382,8 @@ const Offers: React.FC = () => {
               <StatsCards stats={{
                 total_earned: userProfile.earnings || 0,
                 completed_offers: userProfile.completed_offers || 0,
-                current_streak: userProfile.login_streak || 0
+                current_streak: userProfile.login_streak || 0,
+                social_shares: userProfile.social_shares || 0
               }} />
             )}
           </div>

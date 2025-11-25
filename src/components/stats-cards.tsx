@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trophy, DollarSign, Target, Zap } from "lucide-react"
+import { Trophy, DollarSign, Target, Zap, Share2 } from "lucide-react"
 import type { UserStats } from '../types/offers'
 
 interface StatsCardsProps {
@@ -25,6 +25,15 @@ export function StatsCards({ stats }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-white">{stats.completed_offers}</div>
+        </CardContent>
+      </Card>
+      <Card className="backdrop-blur bg-card/50 border-purple-500/20">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-white">Social Shares</CardTitle>
+          <Share2 className="h-4 w-4 text-cyan-400" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-white">{stats.social_shares || 0}</div>
         </CardContent>
       </Card>
       <Card className="backdrop-blur bg-card/50 border-purple-500/20">

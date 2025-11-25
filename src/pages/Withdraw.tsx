@@ -56,10 +56,10 @@ const Withdraw: React.FC = () => {
   const isEligible = userProfile?.withdrawal_eligible || false;
 
   const handleSocialShare = async (platform: string) => {
-    if (!userProfile) return;
+    if (!userProfile || !firebaseUser) return;
     
     try {
-      await trackSocialShare(userProfile.uuid, platform);
+      await trackSocialShare(firebaseUser.uid, platform);
       toast.success(`+2 points for ${platform} share!`);
     } catch (error) {
       toast.error('Failed to track share');
@@ -179,7 +179,7 @@ const Withdraw: React.FC = () => {
 
         {/* Stats Cards */}
         {userProfile && (
-          <div className="grid md:grid-cols-5 gap-4 mb-6">
+          <div className="grid md:grid-cols-6 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
@@ -220,6 +220,17 @@ const Withdraw: React.FC = () => {
                   <div>
                     <p className="text-sm text-gray-600">Clicks</p>
                     <p className="text-xl font-bold">{userProfile.total_clicks}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <Share2 className="w-5 h-5 text-cyan-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Shares</p>
+                    <p className="text-xl font-bold">{userProfile.social_shares || 0}</p>
                   </div>
                 </div>
               </CardContent>
