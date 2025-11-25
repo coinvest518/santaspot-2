@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Copy, Facebook, Twitter, Instagram, Users, BarChart, DollarSign } from 'lucide-react';
+import { Copy, Facebook, Twitter, Instagram, Users, BarChart, DollarSign, Send, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFirebaseUser } from '@/hooks/useFirebaseUser';
 import { useNavigate } from 'react-router-dom';
@@ -130,6 +130,46 @@ const Dashboard = () => {
       toast.success('Link copied to clipboard');
     } catch (error) {
       toast.error('Failed to copy link');
+    }
+  };
+
+  const getShareMessage = () => {
+    return `🎅 Join Santa's Pot and earn money! Get $200 signup bonus + $2 per click + $50 per referral! Use my code: ${dashboardData.referral_code}`;
+  };
+
+  const shareOnFacebook = () => {
+    const url = encodeURIComponent(dashboardData.referralLink);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
+    toast.success('Opening Facebook share dialog...');
+  };
+
+  const shareOnTwitter = () => {
+    const text = encodeURIComponent(getShareMessage());
+    const url = encodeURIComponent(dashboardData.referralLink);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'width=600,height=400');
+    toast.success('Opening Twitter share dialog...');
+  };
+
+  const shareOnWhatsApp = () => {
+    const text = encodeURIComponent(`${getShareMessage()} ${dashboardData.referralLink}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+    toast.success('Opening WhatsApp...');
+  };
+
+  const shareOnTelegram = () => {
+    const text = encodeURIComponent(getShareMessage());
+    const url = encodeURIComponent(dashboardData.referralLink);
+    window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
+    toast.success('Opening Telegram...');
+  };
+
+  const copyShareMessage = async () => {
+    try {
+      const message = `${getShareMessage()} ${dashboardData.referralLink}`;
+      await navigator.clipboard.writeText(message);
+      toast.success('Share message copied! Paste it anywhere to share.');
+    } catch (error) {
+      toast.error('Failed to copy message');
     }
   };
 
@@ -278,20 +318,51 @@ const Dashboard = () => {
           </Card>
 
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Share on Social Media</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button className="bg-[#1877F2] hover:bg-[#1877F2]/90">
+            <h3 className="text-lg font-semibold mb-4">Share on Social Media 🚀</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Share your referral link and earn $2 per click + $50 per signup!
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Button 
+                onClick={shareOnFacebook}
+                className="bg-[#1877F2] hover:bg-[#1877F2]/90"
+              >
                 <Facebook className="w-4 h-4 mr-2" />
                 Facebook
               </Button>
-              <Button className="bg-[#1DA1F2] hover:bg-[#1DA1F2]/90">
+              <Button 
+                onClick={shareOnTwitter}
+                className="bg-[#1DA1F2] hover:bg-[#1DA1F2]/90"
+              >
                 <Twitter className="w-4 h-4 mr-2" />
                 Twitter
               </Button>
-              <Button className="bg-[#E4405F] hover:bg-[#E4405F]/90">
-                <Instagram className="w-4 h-4 mr-2" />
-                Instagram
+              <Button 
+                onClick={shareOnWhatsApp}
+                className="bg-[#25D366] hover:bg-[#25D366]/90"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                WhatsApp
               </Button>
+              <Button 
+                onClick={shareOnTelegram}
+                className="bg-[#0088cc] hover:bg-[#0088cc]/90"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Telegram
+              </Button>
+              <Button 
+                onClick={copyShareMessage}
+                variant="outline"
+                className="md:col-span-2"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copy Share Message
+              </Button>
+            </div>
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-600 font-medium mb-1">Preview:</p>
+              <p className="text-sm text-gray-800">{getShareMessage()}</p>
             </div>
           </Card>
         </div>
